@@ -31,14 +31,17 @@ struct Section
 
 	/**
 	 * Mapping used by the Params, Macros, and Escapes section types.
-	 * "Params": key = parameter name, value = parameter description
-	 * "Macros": key = macro name, value = macro implementation
-	 * "Escapes": key = character to escape, value = replacement string
+	 *
+	 * $(UL
+	 * $(LI "Params": key = parameter name, value = parameter description)
+	 * $(LI "Macros": key = macro name, value = macro implementation)
+	 * $(LI "Escapes": key = character to escape, value = replacement string)
+	 * )
 	 */
 	string[string] mapping;
 
 	/**
-	 * Returns: true if $(D name) is one of $(D STANDARD_SECTIONS)
+	 * Returns: true if $(B name) is one of $(B STANDARD_SECTIONS)
 	 */
 	bool isStandard() const @property
 	{
@@ -129,6 +132,8 @@ bool parseKeyValuePair(ref Lexer lexer, ref string[string] pairs, string[string]
 				app.put(w);
 			}
 		}
+		else if (lexer.front.type == Type.header)
+			break loop;
 		else
 		{
 			lexer.popFront();
@@ -187,9 +192,18 @@ Section parseSection(string name, ref Lexer lexer, string[string] macros)
 		break;
 	case Type.newline:
 		lexer.popFront();
-		app.put("\n");
 		if (lexer.empty || (name == "Summary" && lexer.front.type == Type.newline))
+		{
+			lexer.popFront();
 			break loop;
+		}
+		app.put("\n");
+		break;
+	case Type.embedded:
+		app.put(`<pre><code>`);
+		app.put(lexer.front.text);
+		app.put(`</code></pre>`);
+		lexer.popFront();
 		break;
 	default:
 		app.put(lexer.front.text);

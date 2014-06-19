@@ -39,6 +39,11 @@ Comment parseComment(string text, string[string] macros)
 
 struct Comment
 {
+	bool isDitto() const @property
+	{
+		import std.string;
+		return sections.length == 1 && sections[0].content.strip().toLower() == "ditto";
+	}
 	Section[] sections;
 }
 
@@ -46,7 +51,7 @@ unittest
 {
 	import std.stdio;
 	auto macros = ["A": "<a href=\"$0\">"];
-	auto comment = `This is some text
+	auto comment = `Best-comment-ever © 2014
 
 I thought the same. I was considering writing it, actually.
 Imagine how having the $(A tool) would have influenced the "final by
@@ -58,6 +63,8 @@ transition cases but anything more complicated is likely to
 require full semantic analysis.
 Params:
 	a = $(A param)
+Returns:
+	nothing of consequence
 `;
 
 	Comment c = parseComment(comment, macros);
@@ -66,11 +73,27 @@ Params:
 //		writeln(s);
 	import std.string;
 //	writeln(c.sections);
-	assert(c.sections.length == 3, format("%d", c.sections.length));
+	assert(c.sections.length == 4, format("%d", c.sections.length));
 	assert(c.sections[0].name == "Summary");
+	assert(c.sections[0].content == "Best-comment-ever © 2014", c.sections[0].content);
 	assert(c.sections[1].name == "Description");
 	assert(c.sections[2].name == "Params");
 //	writeln(c.sections[2].mapping);
 	assert("a" in c.sections[2].mapping);
 	assert(c.sections[2].mapping["a"] == "<a href=\"param\">", c.sections[2].mapping["a"]);
+	assert(c.sections[3].name == "Returns");
+}
+
+unittest
+{
+	import std.stdio;
+	auto comment = `---
+auto subcube(T...)(T values);
+---
+Creates a new cube in a similar way to whereCube, but allows the user to
+define a new root for specific dimensions.`c;
+	string[string] macros;
+	Comment c = parseComment(comment, macros);
+//	foreach (s; c.sections)
+//		writeln(s);
 }

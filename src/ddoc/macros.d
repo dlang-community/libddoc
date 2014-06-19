@@ -10,7 +10,7 @@ import ddoc.lexer;
 import std.exception;
 import std.range;
 
-/+private immutable string[string] DEFAULT_MACROS;
+immutable string[string] DEFAULT_MACROS;
 
 shared static this()
 {
@@ -43,7 +43,7 @@ shared static this()
 	DEFAULT_MACROS["YELLOW"] = "<span style=\"color: yellow;\">$0</span>";
 	DEFAULT_MACROS["BLACK"] = "<span style=\"color: black;\">$0</span>";
 	DEFAULT_MACROS["WHITE"] = "<span style=\"color: white;\">$0</span>";
-}+/
+}
 
 private immutable string[] MACRO_ARGUMENTS = [
 	`\$0`, `\$1`, `\$2`, `\$3`, `\$4`, `\$5`, `\$6`, `\$7`, `\$8`, `\$9`, `\$\+`
@@ -84,11 +84,8 @@ string expandMacro(ref Lexer input, string[string] macros)
 	enforce(input.front.type == Type.word, format("%s", input.front));
 	string macroName = input.front.text;
 	input.popFront();
-	if (macroName !in macros)
-		return "";
 	if (input.front.type == Type.whitespace)
 		input.popFront();
-	string macroBody = *(macroName in macros);
 	// [0] is "$0", [1] through [9] are "$1" through "$9", [10] is "$+"
 	Appender!(string)[11] appenders;
 	size_t i = 1;
@@ -158,6 +155,9 @@ string expandMacro(ref Lexer input, string[string] macros)
 //		else
 //			writeln("$", j, ": ", a.data);
 //	}
+	if (macroName !in macros)
+		return "";
+	string macroBody = *(macroName in macros);
 	string result = macroBody;
 	foreach (j, arg; MACRO_ARGUMENTS)
 	{

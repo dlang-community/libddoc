@@ -90,7 +90,7 @@ struct Lexer
 		case '\n':
 			current.text = text[offset .. offset + 1]; current.type = Type.newline; offset++; return;
 		case '-':
-			if (offset > 0 && text[offset - 1] == '\n' &&
+			if (((offset > 0 && text[offset - 1] == '\n') || offset == 0) &&
 				offset + 3 < text.length && text[offset .. offset + 3] == "---")
 			{
 				current.type = Type.embedded;
@@ -121,12 +121,16 @@ struct Lexer
 				}
 			}
 			else
+			{
+				current.type = Type.word;
+				current.text = "-";
 				offset++;
+			}
 			return;
 		case ' ':
 		case '\t':
 			size_t oldOffset = offset;
-			while (offset < text.length && text[offset] == ' ' || text[offset] == '\t')
+			while (offset < text.length && (text[offset] == ' ' || text[offset] == '\t'))
 				offset++;
 			current.type = Type.whitespace;
 			current.text = text[oldOffset .. offset];
@@ -139,16 +143,18 @@ struct Lexer
 
 	void lexWord()
 	{
+		import std.utf;
 		import std.uni;
 		import std.array;
 		size_t oldOffset = offset;
 
 		while (true)
 		{
-			offset++;
+			text.decode(offset);
 			if (offset >= text.length)
 				break;
-			dchar c = text[offset .. $].front;
+			size_t o = offset;
+			dchar c = text.decode(o);
 			if (!(isAlpha(c) || isNumber(c)))
 				break;
 		}
@@ -190,13 +196,40 @@ unittest
 		Type.word,
 		Type.newline,
 		Type.embedded,
+		Type.newline,
+		Type.header,
+		Type.newline,
+		Type.whitespace,
+		Type.word,
+		Type.whitespace,
+		Type.equals,
+		Type.whitespace,
+		Type.dollar,
+		Type.lParen,
+		Type.word,
+		Type.whitespace,
+		Type.word,
+		Type.rParen,
+		Type.newline,
+		Type.header,
+		Type.newline,
+		Type.whitespace,
+		Type.word,
+		Type.whitespace,
+		Type.word,
+		Type.whitespace,
+		Type.word
 	];
 	Lexer l = Lexer(` $(D something, else) is *a
----
+------------
 test
 /** this is some test code */
 assert (whatever);
----`c);
+---------
+Params:
+	a = $(A param)
+Returns:
+	nothing of consequence`c);
 //	foreach (t; l)
 //		writeln(t);
 	assert (equal(l.map!(a => a.type), expected));
