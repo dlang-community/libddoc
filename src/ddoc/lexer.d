@@ -90,7 +90,7 @@ struct Lexer
 		case '\n':
 			current.text = text[offset .. offset + 1]; current.type = Type.newline; offset++; return;
 		case '-':
-			if (((offset > 0 && text[offset - 1] == '\n') || offset == 0) &&
+			if (((offset > 0 && prevIsNewline(offset, text)) || offset == 0) &&
 				offset + 3 < text.length && text[offset .. offset + 3] == "---")
 			{
 				current.type = Type.embedded;
@@ -107,7 +107,7 @@ struct Lexer
 					if (offset >= text.length)
 						break;
 					if (text[offset] == '-' && offset > 0
-						&& text[offset - 1] == '\n' && offset + 3 <= text.length
+						&& prevIsNewline(offset, text) && offset + 3 <= text.length
 						&& text[offset .. offset + 3] == "---")
 					{
 						current.text = text[sliceBegin .. offset - 1];
@@ -160,13 +160,7 @@ struct Lexer
 		}
 		current.type = Type.word;
 		current.text = text[oldOffset .. offset];
-		if (oldOffset == 0)
-			return;
-		oldOffset--;
-		while (oldOffset > 0 && (text[oldOffset] == '\t' || text[oldOffset] == ' '))
-			oldOffset--;
-		if (((oldOffset > 0 && text[oldOffset] == '\n') || oldOffset == 0)
-			&& offset < text.length && text[offset] == ':')
+		if (prevIsNewline(oldOffset, text) && offset < text.length && text[offset] == ':')
 		{
 			current.type = Type.header;
 			offset++;
@@ -238,4 +232,15 @@ Returns:
 //	foreach (t; l)
 //		writeln(t);
 	assert (equal(l.map!(a => a.type), expected));
+}
+
+
+bool prevIsNewline(size_t offset, immutable string text) pure nothrow
+{
+	if (offset == 0)
+		return true;
+	offset--;
+	while (offset > 0 && (text[offset] == ' ' || text[offset] == '\t'))
+		offset--;
+	return text[offset] == '\n';
 }
