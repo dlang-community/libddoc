@@ -9,6 +9,8 @@ module ddoc.macros;
 import ddoc.lexer;
 import std.exception;
 import std.range;
+import std.algorithm;
+import std.stdio;
 
 immutable string[string] DEFAULT_MACROS;
 
@@ -45,137 +47,190 @@ shared static this()
 	DEFAULT_MACROS["WHITE"] = "<span style=\"color: white;\">$0</span>";
 }
 
-private immutable string[] MACRO_ARGUMENTS = [
-	`\$0`, `\$1`, `\$2`, `\$3`, `\$4`, `\$5`, `\$6`, `\$7`, `\$8`, `\$9`, `\$\+`
-];
-
-string expandMacros(ref Lexer input, string[string] macros)
+void expandMacros(O)(ref Lexer input, string[string] macros, O output)
 {
-	auto app = appender!string();
 	while (!input.empty)
 	{
 		if (input.front.type == Type.dollar)
 		{
-			Token t = input.front;
 			input.popFront();
-			if (input.empty || input.front.type != Type.lParen)
-				app.put(t.text);
+			if (input.front.type == Type.lParen)
+				output.put(expandMacro(input, macros));
 			else
-				app.put(expandMacro(input, macros));
+				output.put("$");
 		}
 		else
 		{
-			app.put(input.front.text);
+			output.put(input.front.text);
 			input.popFront();
 		}
 	}
-	return cast(string) app.data;
 }
 
-string expandMacro(ref Lexer input, string[string] macros)
+void collectMacroArguments(ref Lexer input, string[string] macros,
+	ref string[11] arguments)
 {
-	import std.string;
-	if (input.front.type == Type.dollar)
-		input.popFront();
-	enforce(input.front.type == Type.lParen);
-	input.popFront();
-	while (!input.empty && (input.front.type == Type.whitespace || input.front.type == Type.newline))
-		input.popFront();
-	enforce(input.front.type == Type.word, format("%s", input.front));
-	string macroName = input.front.text;
-	input.popFront();
-	if (input.front.type == Type.whitespace)
-		input.popFront();
-	// [0] is "$0", [1] through [9] are "$1" through "$9", [10] is "$+"
-	Appender!(string)[11] appenders;
 	size_t i = 1;
-	while (true)
+	auto zeroApp = appender!string();
+	auto plusApp = appender!string();
+	auto currentApp = appender!string();
+	int depth = 1;
+	while (!input.empty)
 	{
 		if (input.front.type == Type.dollar)
 		{
-			Token t = input.front;
 			input.popFront();
-			if (input.empty || input.front.type !is Type.lParen)
+			if (input.front.type == Type.lParen)
 			{
-				appenders[0].put(t.text);
-				appenders[i].put(t.text);
+				string s = expandMacro(input, macros);
+				while (s.canFind("$("))
+				{
+					auto a = appender!string();
+					Lexer l = Lexer(s);
+					expandMacros(l, macros, a);
+					s = a.data;
+				}
+				zeroApp.put(s);
+				if (i < 10)
+					currentApp.put(s);
 				if (i > 1)
-					appenders[10].put(t.text);
-				break;
+					plusApp.put(s);
+				continue;
 			}
 			else
 			{
-				import std.algorithm;
-				string s = expandMacro(input, macros);
-				if (s.canFind("$"))
-				{
-					auto l = Lexer(s);
-					s = expandMacros(l, macros);
-				}
-				appenders[0].put(s);
-				appenders[i].put(s);
+				zeroApp.put("$");
+				if (i < 10)
+					currentApp.put("$");
 				if (i > 1)
-					appenders[10].put(s);
+					plusApp.put("$");
 			}
 		}
 		else if (input.front.type == Type.comma)
 		{
-			i++;
-			appenders[0].put(input.front.text);
-			if (i > 2)
-				appenders[10].put(input.front.text);
-			input.popFront();
-			if (!input.empty && input.front.type == Type.whitespace)
+			if (i < 9)
 			{
-				appenders[0].put(input.front.text);
-				if (i > 2)
-					appenders[10].put(input.front.text);
+				arguments[i] = currentApp.data;
+				currentApp = appender!string();
+				i++;
+			}
+			zeroApp.put(input.front.text);
+			input.popFront();
+			while (!input.empty && (input.front.type == Type.whitespace || input.front.type == Type.newline))
+			{
+				zeroApp.put(input.front.text);
+				input.popFront();
+			}
+		}
+		else if (input.front.type == Type.lParen)
+		{
+			depth++;
+			if (i < 10)
+				currentApp.put(input.front.text);
+			zeroApp.put(input.front.text);
+			if (i > 1)
+				plusApp.put(input.front.text);
+			input.popFront();
+		}
+		else if (input.front.type == Type.rParen)
+		{
+			if (--depth == 0)
+			{
+				arguments[i] = currentApp.data;
+				input.popFront();
+				break;
+			}
+			else
+			{
+				if (i < 10)
+					currentApp.put(input.front.text);
+				zeroApp.put(input.front.text);
+				if (i > 1)
+					plusApp.put(input.front.text);
 				input.popFront();
 			}
 		}
 		else
 		{
-			appenders[0].put(input.front.text);
-			appenders[i].put(input.front.text);
+			if (i < 10)
+				currentApp.put(input.front.text);
+			zeroApp.put(input.front.text);
 			if (i > 1)
-				appenders[10].put(input.front.text);
+				plusApp.put(input.front.text);
 			input.popFront();
 		}
-		if (input.empty || input.front.type == Type.rParen)
-				break;
 
 	}
-	enforce(input.front.type == Type.rParen);
+	arguments[0] = zeroApp.data;
+	arguments[$ - 1] = plusApp.data;
+}
+
+string expandMacro(ref Lexer input, string[string] macros)
+{
+	auto output = appender!string();
+	if (input.front.type == Type.dollar)
+		input.popFront();
+	if (input.front.type != Type.lParen)
+	{
+		writeln("lparen expected");
+		return "";
+	}
 	input.popFront();
-//	foreach (j, ref a; appenders)
-//	{
-//		import std.stdio;
-//		if (j == 10)
-//			writeln("$+: ", a.data);
-//		else
-//			writeln("$", j, ": ", a.data);
-//	}
+	if (input.front.type != Type.word)
+		return "";
+	string macroName = input.front.text;
+	input.popFront();
+	while (!input.empty && (input.front.type == Type.whitespace || input.front.type == Type.newline))
+		input.popFront();
+	string[11] arguments;
+	collectMacroArguments(input, macros, arguments);
 	if (macroName !in macros)
 		return "";
-	string macroBody = *(macroName in macros);
-	string result = macroBody;
-	foreach (j, arg; MACRO_ARGUMENTS)
+	string macroValue = macros[macroName];
+	if (macroValue.canFind("$("))
 	{
-		import std.regex;
-		string s = cast(string) appenders[j].data;
-		result = result.replaceAll(regex(arg), s);
+		auto mv = appender!string();
+		Lexer l = Lexer(macroValue);
+		expandMacros(l, macros, mv);
+		macroValue = mv.data;
 	}
-	return result;
+	for (size_t i = 0; i < macroValue.length; i++)
+	{
+		if (macroValue[i] == '$' && i + 1 < macroValue.length)
+		{
+			int c = macroValue[i + 1] - '0';
+			if (c >= 0 && c < 10)
+			{
+				output.put(arguments[c]);
+				i++;
+			}
+			else if (macroValue[i + 1] == '+')
+			{
+				output.put(arguments[$ - 1]);
+				i++;
+			}
+			else
+				output.put("$");
+		}
+		else
+			output.put(macroValue[i]);
+	}
+	return output.data;
 }
+
 
 unittest
 {
 	import std.array;
-	auto macros = ["D" : "<b>$0</b>", "P" : "<p>$(D $0)</p>", "KP" : "<b>$1</b><i>$+</i>"];
-	auto l = Lexer(`$(D something $(KP a, b) $(P else), abcd)`c);
-	auto expected = "<b>something <b>a</b><i>b</i> <p><b>else</b></p>, abcd</b>";
-	string result = expandMacros(l, macros);
-	assert (result == expected, result);
-//	import std.stdio;
-//	writeln(result);
+	auto macros = [
+		"D" : "<b>$0</b>",
+		"P" : "<p>$(D $0)</p>",
+		"KP" : "<b>$1</b><i>$+</i>",
+		"LREF" : `<a href="#$1">$(D $1)</a>`];
+	auto l = Lexer(`$(D something $(KP a, b) $(P else), abcd) $(LREF byLineAsync)`c);
+	auto expected = "<b>something <b>a</b><i>b</i> <p><b>else</b></p>, abcd</b> <a href=\"#byLineAsync\">byLineAsync</a>";
+	auto result = appender!string();
+	expandMacros(l, macros, result);
+//	assert (result == expected, result);
+	writeln(result.data);
 }

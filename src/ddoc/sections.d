@@ -153,7 +153,9 @@ bool parseKeyValuePair(ref Lexer lexer, ref string[string] pairs, string[string]
 //		break;
 	}
 	Lexer l = Lexer(app.data);
-	pairs[key] = expandMacros(l, macros);
+	auto val = appender!string();
+	expandMacros(l, macros, val);
+	pairs[key] = val.data;
 	return true;
 }
 
@@ -183,10 +185,7 @@ Section parseSection(string name, ref Lexer lexer, string[string] macros)
 	case Type.dollar:
 		lexer.popFront();
 		if (lexer.empty || lexer.front.type != Type.lParen)
-		{
 			app.put("$");
-			break loop;
-		}
 		else
 			app.put(expandMacro(lexer, macros));
 		break;
