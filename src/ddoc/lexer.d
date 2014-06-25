@@ -155,12 +155,17 @@ struct Lexer
 				break;
 			size_t o = offset;
 			dchar c = text.decode(o);
-			if (!(isAlpha(c) || isNumber(c)))
+			if (!(isAlpha(c) || isNumber(c)) && c != '_')
 				break;
 		}
 		current.type = Type.word;
 		current.text = text[oldOffset .. offset];
-		if (((oldOffset > 0 && text[oldOffset - 1] == '\n') || oldOffset == 0)
+		if (oldOffset == 0)
+			return;
+		oldOffset--;
+		while (oldOffset > 0 && (text[oldOffset] == '\t' || text[oldOffset] == ' '))
+			oldOffset--;
+		if (((oldOffset > 0 && text[oldOffset] == '\n') || oldOffset == 0)
 			&& offset < text.length && text[offset] == ':')
 		{
 			current.type = Type.header;

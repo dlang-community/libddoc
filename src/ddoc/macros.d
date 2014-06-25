@@ -228,9 +228,9 @@ unittest
 		"KP" : "<b>$1</b><i>$+</i>",
 		"LREF" : `<a href="#$1">$(D $1)</a>`];
 	auto l = Lexer(`$(D something $(KP a, b) $(P else), abcd) $(LREF byLineAsync)`c);
-	auto expected = "<b>something <b>a</b><i>b</i> <p><b>else</b></p>, abcd</b> <a href=\"#byLineAsync\">byLineAsync</a>";
+	auto expected = `<b>something <b>a</b><i>b</i> <p><b>else</b></p>, abcd</b> <a href="#byLineAsync"><b>byLineAsync</b></a>`;
 	auto result = appender!string();
 	expandMacros(l, macros, result);
-//	assert (result == expected, result);
-	writeln(result.data);
+	assert (result.data == expected, result.data);
+//	writeln(result.data);
 }

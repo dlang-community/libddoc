@@ -72,7 +72,7 @@ Returns:
 //	foreach (s; c.sections)
 //		writeln(s);
 	import std.string;
-	writeln(c.sections);
+//	writeln(c.sections);
 	assert(c.sections.length == 4, format("%d", c.sections.length));
 	assert(c.sections[0].name == "Summary");
 	assert(c.sections[0].content == "Best-comment-ever © 2014", c.sections[0].content);

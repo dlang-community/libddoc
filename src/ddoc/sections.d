@@ -60,6 +60,10 @@ struct Section
 	}
 }
 
+/**
+ * Parses a Macros or Params section, filling in the mapping field of the
+ * returned section.
+ */
 Section parseMacrosOrParams(string name, ref Lexer lexer, ref string[string] macros)
 {
 	Section s;
@@ -86,7 +90,6 @@ Section parseMacrosOrParams(string name, ref Lexer lexer, ref string[string] mac
 bool parseKeyValuePair(ref Lexer lexer, ref string[string] pairs, string[string] macros)
 {
 	import std.array;
-//	import std.stdio;
 	string key;
 	while (!lexer.empty && (lexer.front.type == Type.whitespace
 		|| lexer.front.type == Type.newline))
@@ -168,10 +171,9 @@ bool parseKeyValuePair(ref Lexer lexer, ref string[string] pairs, string[string]
  *              substitution
  * Returns: the parsed section
  */
-Section parseSection(string name, ref Lexer lexer, string[string] macros)
+Section parseSection(string name, ref Lexer lexer, ref string[string] macros)
 {
 	import std.array;
-
 	if (name == "Macros" || name == "Params" || name == "Escapes")
 		return parseMacrosOrParams(name, lexer, macros);
 
