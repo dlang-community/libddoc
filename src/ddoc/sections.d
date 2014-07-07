@@ -122,8 +122,12 @@ bool parseKeyValuePair(ref Lexer lexer, ref string[string] pairs, string[string]
 		{
 			string w = lexer.front.text;
 			lexer.popFront();
+			bool ws;
 			while (!lexer.empty && lexer.front.type == Type.whitespace)
+			{
+				ws = true;
 				lexer.popFront();
+			}
 			if (lexer.front.type == Type.equals)
 			{
 				lexer = savePoint;
@@ -133,6 +137,8 @@ bool parseKeyValuePair(ref Lexer lexer, ref string[string] pairs, string[string]
 			{
 				app.put(" ");
 				app.put(w);
+				if (ws)
+					app.put(" ");
 			}
 		}
 		else if (lexer.front.type == Type.header)
