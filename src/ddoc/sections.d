@@ -116,7 +116,7 @@ bool parseKeyValuePair(ref Lexer lexer, ref string[string] pairs, string[string]
 	{
 	case Type.newline:
 		Lexer savePoint = lexer;
-		while (!lexer.empty && lexer.front.type == Type.newline || lexer.front.type == Type.whitespace)
+		while (!lexer.empty && (lexer.front.type == Type.newline || lexer.front.type == Type.whitespace))
 			lexer.popFront();
 		if (lexer.front.type == Type.word)
 		{
