@@ -145,9 +145,10 @@ bool parseKeyValuePair(ref Lexer lexer, ref string[string] pairs, string[string]
 			break loop;
 		else
 		{
-			lexer.popFront();
 			if (!lexer.empty)
 				app.put(" ");
+			app.put(lexer.front.text);
+			lexer.popFront();
 		}
 		break;
 	case Type.whitespace:
