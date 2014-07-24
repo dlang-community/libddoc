@@ -7,6 +7,9 @@
 module ddoc.sections;
 import ddoc.lexer;
 import ddoc.macros;
+import std.typecons;
+
+alias KeyValuePair = Tuple!(string, string);
 
 /**
  * Standard section names
@@ -38,7 +41,7 @@ struct Section
 	 * $(LI "Escapes": key = character to escape, value = replacement string)
 	 * )
 	 */
-	string[string] mapping;
+	KeyValuePair[] mapping;
 
 	/**
 	 * Returns: true if $(B name) is one of $(B STANDARD_SECTIONS)
@@ -77,8 +80,8 @@ Section parseMacrosOrParams(string name, ref Lexer lexer, ref string[string] mac
 			break;
 		if (name == "Macros")
 		{
-			foreach (k, v; s.mapping)
-				macros[k] = v;
+			foreach (kv; s.mapping)
+				macros[kv[0]] = kv[1];
 		}
 	}
 	return s;
@@ -87,7 +90,7 @@ Section parseMacrosOrParams(string name, ref Lexer lexer, ref string[string] mac
 /**
  * Returns: true if the parsing succeeded
  */
-bool parseKeyValuePair(ref Lexer lexer, ref string[string] pairs, string[string] macros)
+bool parseKeyValuePair(ref Lexer lexer, ref KeyValuePair[] pairs, string[string] macros)
 {
 	import std.array;
 	string key;
@@ -165,7 +168,7 @@ bool parseKeyValuePair(ref Lexer lexer, ref string[string] pairs, string[string]
 	Lexer l = Lexer(app.data);
 	auto val = appender!string();
 	expandMacros(l, macros, val);
-	pairs[key] = val.data;
+	pairs ~= KeyValuePair(key, val.data);
 	return true;
 }
 
@@ -174,8 +177,7 @@ bool parseKeyValuePair(ref Lexer lexer, ref string[string] pairs, string[string]
  * Params:
  *     name = the section name
  *     lexer = the lexer
- *     macros = the macros used for
- *              substitution
+ *     macros = the macros used for substitution
  * Returns: the parsed section
  */
 Section parseSection(string name, ref Lexer lexer, ref string[string] macros)
