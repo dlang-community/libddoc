@@ -163,16 +163,27 @@ void collectMacroArguments(ref Lexer input, string[string] macros,
 		else
 		{
 			if (i < 10)
-				currentApp.put(input.front.text);
-			zeroApp.put(input.front.text);
+				putInApp(currentApp, input.front);
+			putInApp(zeroApp, input.front);
 			if (i > 1)
-				plusApp.put(input.front.text);
+				putInApp(plusApp, input.front);
 			input.popFront();
 		}
-
 	}
 	arguments[0] = zeroApp.data;
 	arguments[$ - 1] = plusApp.data;
+}
+
+void putInApp(App)(ref App app, Token token)
+{
+	if (token.type == Type.embedded)
+	{
+		app.put("<pre><code>");
+		app.put(token.text);
+		app.put("</code></pre>");
+	}
+	else
+		app.put(token.text);
 }
 
 string expandMacro(ref Lexer input, string[string] macros)
