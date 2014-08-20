@@ -110,7 +110,7 @@ struct Lexer
 						&& prevIsNewline(offset, text) && offset + 3 <= text.length
 						&& text[offset .. offset + 3] == "---")
 					{
-						current.text = text[sliceBegin .. offset - 1];
+						current.text = sliceBegin >= offset ? null : text[sliceBegin .. offset - 1];
 						// skip closing dashes
 						while (offset < text.length && text[offset] == '-')
 							offset++;
