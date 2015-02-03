@@ -12,6 +12,8 @@ import std.range;
 import std.algorithm;
 import std.stdio;
 
+alias KeyValuePair = Tuple!(string, string);
+
 immutable string[string] DEFAULT_MACROS;
 
 shared static this()
@@ -358,4 +360,91 @@ unittest
 	expandMacros(l, macros, result);
 	assert (result.data == expected, result.data);
 //	writeln(result.data);
+}
+
+/**
+ * Parses macros declaration, in the forms of 'NAME=VALUE'
+ *
+ * Returns: true if the parsing succeeded
+ */
+bool parseKeyValuePair(ref Lexer lexer, ref KeyValuePair[] pairs, string[string] macros)
+{
+	import std.array;
+	string key;
+	while (!lexer.empty && (lexer.front.type == Type.whitespace
+		|| lexer.front.type == Type.newline))
+	{
+		lexer.popFront();
+	}
+	if (!lexer.empty && lexer.front.type == Type.word)
+	{
+		key = lexer.front.text;
+		lexer.popFront();
+	}
+	else
+		return false;
+	while (!lexer.empty && lexer.front.type == Type.whitespace)
+		lexer.popFront();
+	if (!lexer.empty && lexer.front.type == Type.equals)
+		lexer.popFront();
+	else
+		return false;
+	if (lexer.front.type == Type.whitespace)
+		lexer.popFront();
+	auto app = appender!string();
+	loop: while (!lexer.empty) switch (lexer.front.type)
+	{
+	case Type.newline:
+		Lexer savePoint = lexer;
+		while (!lexer.empty && (lexer.front.type == Type.newline || lexer.front.type == Type.whitespace))
+			lexer.popFront();
+		if (lexer.front.type == Type.word)
+		{
+			string w = lexer.front.text;
+			lexer.popFront();
+			bool ws;
+			while (!lexer.empty && lexer.front.type == Type.whitespace)
+			{
+				ws = true;
+				lexer.popFront();
+			}
+			if (lexer.front.type == Type.equals)
+			{
+				lexer = savePoint;
+				break loop;
+			}
+			else
+			{
+				app.put(" ");
+				app.put(w);
+				if (ws)
+					app.put(" ");
+			}
+		}
+		else if (lexer.front.type == Type.header)
+			break loop;
+		else
+		{
+			if (!lexer.empty)
+				app.put(" ");
+			app.put(lexer.front.text);
+			lexer.popFront();
+		}
+		break;
+	case Type.whitespace:
+		app.put(" ");
+		lexer.popFront();
+		break;
+	case Type.header:
+		break loop;
+	default:
+		app.put(lexer.front.text);
+		lexer.popFront();
+//		break;
+	}
+	Lexer l = Lexer(app.data);
+	auto val = appender!string();
+	expandMacros(l, macros, val);
+	pairs ~= KeyValuePair(key, val.data);
+	return true;
 }
