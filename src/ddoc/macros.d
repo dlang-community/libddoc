@@ -363,22 +363,73 @@ unittest
 }
 
 /**
- * Parses macros declaration, in the forms of 'NAME=VALUE'
+ * Parses macros declaration list, in the forms of 'NAME=VALUE'
  *
  * Returns: true if the parsing succeeded
  */
-bool parseKeyValuePair(ref Lexer lexer, ref KeyValuePair[] pairs, string[string] macros)
+bool parseKeyValuePair(ref Lexer lexer, ref KeyValuePair[] pairs, string[string] macros, bool stopAtSection = true)
 {
-	import std.array;
-	string key;
-	while (!lexer.empty && (lexer.front.type == Type.whitespace
-		|| lexer.front.type == Type.newline))
-	{
-		lexer.popFront();
+	import std.array : appender;
+	import std.format : text;
+	string prevKey, key;
+	string prevValue, value;
+	while (!lexer.empty) {
+		// If parseAsKeyValuePair returns true, we stopped on a newline.
+		// If it returns false, we're either on a section (header),
+		// or the continuation of a macro.
+		if (!parseAsKeyValuePair(lexer, key, value)) {
+			if (prevKey == null) // First pass and invalid data
+				return false;
+			if (stopAtSection && lexer.front.type == Type.header)
+				break;
+			assert(lexer.offset >= prevValue.length);
+			size_t start = lexer.offset - lexer.front.text.length
+				- prevValue.length;
+			while (!lexer.empty && lexer.front.type != Type.newline) {
+				lexer.popFront();
+			}
+			prevValue = lexer.text[start..lexer.offset];
+		} else {
+			// New macro, we can save the previous one.
+			// The only case when key would not be defined is
+			if (prevKey)
+				pairs ~= KeyValuePair(prevKey, prevValue);
+			prevKey = key;
+			prevValue = value;
+			key = value = null;
+		}
+		if (!lexer.empty) {
+			assert(lexer.front.type == Type.newline,
+			       text("Front: ", lexer.front.type, ", text: ", lexer.text[lexer.offset..$]));
+			lexer.popFront();
+		}
 	}
+
+	if (prevKey)
+		pairs ~= KeyValuePair(prevKey, prevValue);
+
+	// Expand macros
+	if (macros !is null) {
+		foreach (ref kv; pairs) {
+			auto l = Lexer(kv[1]);
+			auto val = appender!string();
+			expandMacros(l, macros, val);
+			kv[1] = val.data;
+		}
+	}
+	return true;
+}
+
+// Try to parse a line as a KeyValuePair, returns false if it fails
+private bool parseAsKeyValuePair(ref Lexer olexer, ref string key, ref string value) {
+	string _key;
+	auto lexer = olexer;
+	while (!lexer.empty && (lexer.front.type == Type.whitespace
+				|| lexer.front.type == Type.newline))
+		lexer.popFront();
 	if (!lexer.empty && lexer.front.type == Type.word)
 	{
-		key = lexer.front.text;
+		_key = lexer.front.text;
 		lexer.popFront();
 	}
 	else
@@ -389,62 +440,42 @@ bool parseKeyValuePair(ref Lexer lexer, ref KeyValuePair[] pairs, string[string]
 		lexer.popFront();
 	else
 		return false;
-	if (lexer.front.type == Type.whitespace)
+	while (lexer.front.type == Type.whitespace)
 		lexer.popFront();
-	auto app = appender!string();
-	loop: while (!lexer.empty) switch (lexer.front.type)
-	{
-	case Type.newline:
-		Lexer savePoint = lexer;
-		while (!lexer.empty && (lexer.front.type == Type.newline || lexer.front.type == Type.whitespace))
-			lexer.popFront();
-		if (lexer.front.type == Type.word)
-		{
-			string w = lexer.front.text;
-			lexer.popFront();
-			bool ws;
-			while (!lexer.empty && lexer.front.type == Type.whitespace)
-			{
-				ws = true;
-				lexer.popFront();
-			}
-			if (lexer.front.type == Type.equals)
-			{
-				lexer = savePoint;
-				break loop;
-			}
-			else
-			{
-				app.put(" ");
-				app.put(w);
-				if (ws)
-					app.put(" ");
-			}
-		}
-		else if (lexer.front.type == Type.header)
-			break loop;
-		else
-		{
-			if (!lexer.empty)
-				app.put(" ");
-			app.put(lexer.front.text);
-			lexer.popFront();
-		}
-		break;
-	case Type.whitespace:
-		app.put(" ");
+	assert(lexer.offset > 0, "Something is wrong with the lexer");
+	// Offset points to the END of the token, not the beginning.
+	size_t start = lexer.offset - lexer.front.text.length;
+	while (!lexer.empty && lexer.front.type != Type.newline) {
+		assert(lexer.front.type != Type.header);
 		lexer.popFront();
-		break;
-	case Type.header:
-		break loop;
-	default:
-		app.put(lexer.front.text);
-		lexer.popFront();
-//		break;
 	}
-	Lexer l = Lexer(app.data);
-	auto val = appender!string();
-	expandMacros(l, macros, val);
-	pairs ~= KeyValuePair(key, val.data);
+	olexer = lexer;
+	key = _key;
+	size_t end = lexer.offset - ((start != lexer.offset) ? (1) : (0));
+	value = lexer.text[start..end];
 	return true;
+}
+
+/**
+ * Parses macros files, usually with extension .ddoc.
+ *
+ * Macros files are files that only contains macros definitions.
+ */
+string[string] parseMacrosFile(string[] paths...) {
+	import std.exception : enforce;
+	import std.file : readText;
+	import std.format : text;
+
+	string[string] ret;
+	foreach (file; paths) {
+		KeyValuePair[] pairs;
+		auto txt = readText(file);
+		auto lexer = Lexer(txt);
+		parseKeyValuePair(lexer, pairs, null, false);
+		enforce(lexer.empty, text("Unparsed data (", lexer.offset, "): ",
+					  lexer.text[lexer.offset..$]));
+		foreach (kv; pairs)
+			ret[kv[0]] = kv[1];
+	}
+	return ret;
 }
