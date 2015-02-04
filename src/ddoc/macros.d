@@ -57,7 +57,21 @@ shared static this()
 	DEFAULT_MACROS["YELLOW"] = "<span style=\"color: yellow;\">$0</span>";
 }
 
+/**
+ * Expand  the macros present in the given lexer and write them to an $(D OutputRange).
+ *
+ * expandMacros takes a $(D ddoc.Lexer), and will, until it's empty, write it's expanded version to $(D output).
+ *
+ * Params:
+ * input = A reference to the lexer to use. When expandMacros successfully returns, it will be empty.
+ * macros = A list of DDOC macros to use for expansion. This override the previous definitions, hardwired in
+ *		DDOC. Which means if an user provides a macro such as $(D macros["B"] = "<h1>$0</h1>";),
+ *		it will be used, otherwise the default $(D macros["B"] = "<b>$0</b>";) will be used.
+ *		To undefine hardwired macros, just set them to an empty string: $(D macros["B"] = "";).
+ * output = An object satisfying $(D std.range.isOutputRange), usually a $(D std.array.Appender).
+ */
 void expandMacros(O)(ref Lexer input, string[string] macros, O output)
+	if (isOutputRange!(O, string))
 {
 	while (!input.empty)
 	{
@@ -77,13 +91,14 @@ void expandMacros(O)(ref Lexer input, string[string] macros, O output)
 	}
 }
 
-/// Macros with arguments are expanded up to what's possible.
+///
 unittest {
 	import ddoc.lexer;
 	import std.array : appender;
 
 	auto macros =
 		[
+		 // Note: You should NOT try to expand any recursive macro.
 		 "IDENTITY": "$0",
 		 "HWORLD": "$(IDENTITY Hello world!)",
 		 "ARGS": "$(IDENTITY $1 $+)",
@@ -95,7 +110,7 @@ unittest {
 		expandMacros(lex, macros, app);
 		v = app.data;
 	}
-	
+
 	assert(macros["IDENTITY"] == "$0", macros["IDENTITY"]);
 	assert(macros["HWORLD"] == "Hello world!", macros["HWORLD"]);
 	assert(macros["ARGS"] == "$1 $+", macros["ARGS"]);
