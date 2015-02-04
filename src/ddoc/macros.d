@@ -189,10 +189,9 @@ void collectMacroArguments(ref Lexer input, string[string] macros,
 	auto plusApp = appender!string();
 	auto currentApp = appender!string();
 	int depth = 1;
-	while (!input.empty)
-	{
-		if (input.front.type == Type.dollar)
-		{
+loop:	while (!input.empty) {
+		switch (input.front.type) {
+		case Type.dollar:
 			input.popFront();
 			if (input.front.type == Type.lParen)
 			{
@@ -219,9 +218,8 @@ void collectMacroArguments(ref Lexer input, string[string] macros,
 				if (i > 1)
 					plusApp.put("$");
 			}
-		}
-		else if (input.front.type == Type.comma)
-		{
+			break;
+		case Type.comma:
 			if (i < 9)
 			{
 				arguments[i] = currentApp.data;
@@ -235,9 +233,8 @@ void collectMacroArguments(ref Lexer input, string[string] macros,
 				zeroApp.put(input.front.text);
 				input.popFront();
 			}
-		}
-		else if (input.front.type == Type.lParen)
-		{
+			break;
+		case Type.lParen:
 			depth++;
 			if (i < 10)
 				currentApp.put(input.front.text);
@@ -245,14 +242,13 @@ void collectMacroArguments(ref Lexer input, string[string] macros,
 			if (i > 1)
 				plusApp.put(input.front.text);
 			input.popFront();
-		}
-		else if (input.front.type == Type.rParen)
-		{
+			break;
+		case Type.rParen:
 			if (--depth == 0)
 			{
 				arguments[i] = currentApp.data;
 				input.popFront();
-				break;
+				break loop;
 			}
 			else
 			{
@@ -263,9 +259,8 @@ void collectMacroArguments(ref Lexer input, string[string] macros,
 					plusApp.put(input.front.text);
 				input.popFront();
 			}
-		}
-		else
-		{
+			break;
+		default:
 			if (i < 10)
 				putInApp(currentApp, input.front);
 			putInApp(zeroApp, input.front);
