@@ -77,6 +77,37 @@ void expandMacros(O)(ref Lexer input, string[string] macros, O output)
 	}
 }
 
+/// Macros with arguments are expanded up to what's possible.
+unittest {
+	import ddoc.lexer;
+	import std.array : appender;
+
+	auto macros =
+		[
+		 "IDENTITY": "$0",
+		 "HWORLD": "$(IDENTITY Hello world!)",
+		 "ARGS": "$(IDENTITY $1 $+)",
+		 "GREETINGS": "$(IDENTITY $(ARGS Hello, $0))",
+		 ];
+	foreach (k, ref v; macros) {
+		auto lex = Lexer(v);
+		auto app = appender!string();
+		expandMacros(lex, macros, app);
+		v = app.data;
+	}
+	
+	assert(macros["IDENTITY"] == "$0", macros["IDENTITY"]);
+	assert(macros["HWORLD"] == "Hello world!", macros["HWORLD"]);
+	assert(macros["ARGS"] == "$1 $+", macros["ARGS"]);
+	assert(macros["GREETINGS"] == "Hello $0", macros["GREETINGS"]);
+
+	auto lex = Lexer(`$(B $(IDENTITY $(GREETINGS John Malkovich)))`);
+	auto app = appender!string();
+	expandMacros(lex, macros, app);
+	auto result = app.data;
+	assert(result == "<b>Hello John Malkovich</b>", result);
+}
+
 void collectMacroArguments(ref Lexer input, string[string] macros,
 	ref string[11] arguments)
 {
@@ -205,9 +236,14 @@ string expandMacro(ref Lexer input, string[string] macros)
 		input.popFront();
 	string[11] arguments;
 	collectMacroArguments(input, macros, arguments);
-	if (macroName !in macros)
-		return "";
-	string macroValue = macros[macroName];
+	string macroValue;
+	{
+		const(string)* p = macroName in macros;
+		if (p is null)
+			if ((p = macroName in DEFAULT_MACROS) is null)
+				return "";
+		macroValue = *p;
+	}
 	if (macroValue.canFind("$("))
 	{
 		auto mv = appender!string();
