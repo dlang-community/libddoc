@@ -54,9 +54,10 @@ struct Lexer
 	 * Params:
 	 *     text = the _text to lex
 	 */
-	this(string text)
+	this(string text, bool skipHeader = false)
 	{
 		this.text = text;
+		this.parseHeader = !skipHeader;
 		popFront();
 	}
 
@@ -178,7 +179,7 @@ private:
 		}
 		current.type = Type.word;
 		current.text = text[oldOffset .. offset];
-		if (prevIsNewline(oldOffset, text) && offset < text.length && text[offset] == ':')
+		if (parseHeader && prevIsNewline(oldOffset, text) && offset < text.length && text[offset] == ':')
 		{
 			current.type = Type.header;
 			offset++;
@@ -210,6 +211,7 @@ private:
 	size_t offset;
 	string text;
 	bool _empty;
+	bool parseHeader;
 }
 
 unittest

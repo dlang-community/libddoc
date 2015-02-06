@@ -74,7 +74,7 @@ Section parseMacrosOrParams(string name, ref Lexer lexer, ref string[string] mac
 		string[string] m;
 		if (name != "Macros")
 			m = macros;
-		if (!parseKeyValuePair(lexer, s.mapping, m))
+		if (!parseKeyValuePair(lexer, s.mapping))
 			break;
 		if (name == "Macros")
 		{

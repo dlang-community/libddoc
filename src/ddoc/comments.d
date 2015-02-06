@@ -80,7 +80,7 @@ Returns:
 	assert(c.sections[2].name == "Params");
 //	writeln(c.sections[2].mapping);
 	assert(c.sections[2].mapping[0][0] == "a");
-	assert(c.sections[2].mapping[0][1] == "<a href=\"param\">", c.sections[2].mapping[0][1]);
+	assert(c.sections[2].mapping[0][1] == "$(A param)", c.sections[2].mapping[0][1]);
 	assert(c.sections[3].name == "Returns");
 }
 
