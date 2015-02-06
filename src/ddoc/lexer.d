@@ -273,6 +273,18 @@ Returns:
 	assert (equal(l.map!(a => a.type), expected));
 }
 
+/**
+ * Class for library exception.
+ *
+ * Most often, this is thrown when a Ddoc document is misformatted
+ * (unmatching parenthesis, too much arguments to a macro...).
+ */
+class DdocException : Exception {
+	this(string msg, string file = __FILE__,
+	     size_t line = __LINE__, Throwable next = null) pure nothrow @safe {
+		super(msg, file, line, next);
+	}
+}
 
 bool prevIsNewline(size_t offset, immutable string text) pure nothrow
 {
