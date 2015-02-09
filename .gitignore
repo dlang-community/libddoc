@@ -1,4 +1,6 @@
 .dub/
 __test__library__
+__test__lib__
 dub.selections.json
 libddoc.a
+./ddoc
