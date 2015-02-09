@@ -182,7 +182,7 @@ bool parseKeyValuePair(ref Lexer lexer, ref KeyValuePair[] pairs, string[string]
  */
 Section parseSection(string name, ref Lexer lexer, ref string[string] macros)
 {
-	import std.array;
+	import std.array : appender;
 	if (name == "Macros" || name == "Params" || name == "Escapes")
 		return parseMacrosOrParams(name, lexer, macros);
 
@@ -215,6 +215,11 @@ Section parseSection(string name, ref Lexer lexer, ref string[string] macros)
 		app.put(`</code></pre>`);
 		lexer.popFront();
 		break;
+	case Type.inlined:
+		app.put(`<pre class="inlined"><code>`);
+		app.put(lexer.front.text);
+		app.put(`</code></pre>`);
+		lexer.popFront();
 	default:
 		app.put(lexer.front.text);
 		lexer.popFront();

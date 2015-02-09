@@ -23,6 +23,8 @@ enum Type : ubyte
 	newline,
 	/// embedded D code
 	embedded,
+	/// backtick-inlined code
+	inlined,
 	/// ,
 	comma,
 	/// =
@@ -74,6 +76,24 @@ struct Lexer
 			_empty = true;
 		while (offset < text.length) switch (text[offset])
 		{
+		case '`':
+			import std.stdio : stderr;
+			offset++;
+			immutable size_t inlineCode = inlineCodeIndex();
+			if (inlineCode == size_t.max)
+			{
+				stderr.writeln("Non-inlined code");
+				current.text = "`";
+				current.type = Type.word;
+			}
+			else
+			{
+				current.text = text[offset .. inlineCode];
+				stderr.writeln("Inlined code:", current.text);
+				current.type = Type.inlined;
+				offset = inlineCode;
+				return;
+			}
 		case ',':
 			current.text = text[offset .. offset + 1]; current.type = Type.comma; offset++; return;
 		case '=':
@@ -141,11 +161,12 @@ struct Lexer
 		}
 	}
 
+private:
+
 	void lexWord()
 	{
-		import std.utf;
-		import std.uni;
-		import std.array;
+		import std.utf:decode;
+		import std.uni : isNumber, isAlpha;
 		size_t oldOffset = offset;
 
 		while (true)
@@ -165,6 +186,27 @@ struct Lexer
 			current.type = Type.header;
 			offset++;
 		}
+	}
+
+	size_t inlineCodeIndex() const
+	{
+		import std.algorithm : startsWith;
+		size_t o = offset;
+		while (o < text.length)
+		{
+			if (text[o .. $].startsWith("\r")
+				|| text[o .. $].startsWith("\n")
+				|| text[o .. $].startsWith("\u2028")
+				|| text[o .. $].startsWith("\u2029"))
+			{
+				return size_t.max;;
+			}
+			else if (text[o] == '`')
+				return o;
+			else
+				o++;
+		}
+		return size_t.max;
 	}
 
 	Token current;
