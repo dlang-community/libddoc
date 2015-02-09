@@ -92,8 +92,8 @@ struct Lexer
 				stderr.writeln("Inlined code:", current.text);
 				current.type = Type.inlined;
 				offset = inlineCode;
-				return;
 			}
+			return;
 		case ',':
 			current.text = text[offset .. offset + 1]; current.type = Type.comma; offset++; return;
 		case '=':
