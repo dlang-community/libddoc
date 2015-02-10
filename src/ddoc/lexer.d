@@ -159,7 +159,7 @@ struct Lexer
 		}
 	}
 
-private:
+//private:
 
 	void lexWord()
 	{
