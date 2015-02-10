@@ -77,19 +77,16 @@ struct Lexer
 		while (offset < text.length) switch (text[offset])
 		{
 		case '`':
-			import std.stdio : stderr;
 			offset++;
 			immutable size_t inlineCode = inlineCodeIndex();
 			if (inlineCode == size_t.max)
 			{
-				stderr.writeln("Non-inlined code");
 				current.text = "`";
 				current.type = Type.word;
 			}
 			else
 			{
 				current.text = text[offset .. inlineCode];
-				stderr.writeln("Inlined code:", current.text);
 				current.type = Type.inlined;
 				offset = inlineCode;
 			}
