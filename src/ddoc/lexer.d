@@ -196,7 +196,7 @@ private:
 				|| text[o .. $].startsWith("\u2028")
 				|| text[o .. $].startsWith("\u2029"))
 			{
-				return size_t.max;;
+				return size_t.max;
 			}
 			else if (text[o] == '`')
 				return o;

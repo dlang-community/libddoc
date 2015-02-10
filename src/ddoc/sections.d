@@ -220,6 +220,7 @@ Section parseSection(string name, ref Lexer lexer, ref string[string] macros)
 		app.put(lexer.front.text);
 		app.put(`</code></pre>`);
 		lexer.popFront();
+		break;
 	default:
 		app.put(lexer.front.text);
 		lexer.popFront();
