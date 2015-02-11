@@ -8,13 +8,22 @@
  * - Parse a "Macros:" section, with $(D parseKeyValuePair);
  * To work with embedded documentation ('.dd' files), see $(D ddoc.standalone).
  *
- * Most functions provide two interfaces. One takes an $(D OutputRange) to write to,
- * and the other one is a convenience wrapper around it, which returns a string.
+ * Most functions provide two interfaces.
+ * One takes an $(D OutputRange) to write to, and the other one is
+ * a convenience wrapper around it, which returns a string.
  * It uses an $(D std.array.Appender) as the output range.
  *
  * Most functions take a 'macros' parameter. The user is not required to pass
  * the standard D macros in it if he wants HTML output, the same macros that
  * are hardwired into DDOC are hardwired into libddoc (B, I, D_CODE, etc...).
+ *
+ * Note:
+ * The code can contains embedded code, which will be highlighted by
+ * macros substitution (see corresponding DDOC macros).
+ * However, the substitution is *NOT* performed by this module, you should
+ * call $(D ddoc.highlight.highlight) first.
+ * If you forget to do so, libddoc will consider this as a developper
+ * mistake, and will kindly inform you with an assertion error.
  *
  * Copyright: © 2014 Economic Modeling Specialists, Intl.
  * Authors: Brian Schott, Mathias 'Geod24' Lang
@@ -64,37 +73,6 @@ unittest {
 	auto r3 = expand(l3, null);
 	auto e3 = `This $(MACRO) do not expand recursively.`;
 	assert(e3 == r3, r3);
-
-	// The code can contains embedded code, which will be highlighted by
-	// macros substitution (see corresponding DDOC macros).
-	// The substitution is *NOT* performed by DDOC, and must be done by
-	// calling $(D parseEmbedded) first.
-	// If you forget to do so, libddoc will consider this as a developper
-	// mistake, and will kindly inform you with an assertion error.
-	auto s4 = `Here is some embedded D code I'd like to show you:
-$(MY_D_CODE
-------
-// Entry point...
-void main() {
-  import std.stdio : writeln;
-  writeln("Hello,", " ", "world", "!");
-}
-------
-)
-Isn't it pretty ?`;
-	auto l4 = Lexer(parseEmbedded(s4));
-	// Embedded code is surrounded by D_CODE macro, and tokens have their own
-	// macros (see: TODO).
-	auto r4 = expand(l4, [ "MY_D_CODE": "<code>$1</code>", "D_CODE": "$0" ]);
-	auto e4 = `Here is some embedded D code I'd like to show you:
-<code><font color=green>// Entry point...</font>
-<font color=blue>void</font> main() {
-  <font color=blue>import</font> std.stdio : writeln;
-  writeln(<font color=red>"Hello,"</font>, <font color=red>" "</font>, <font color=red>"world"</font>, <font color=red>"!"</font>);
-}
-</code>
-Isn't it pretty ?`;
-	assert(r4 == e4, r4);
 }
 
 import ddoc.lexer;
@@ -225,8 +203,7 @@ shared static this()
 void expand(O)(Lexer input, in string[string] macros, O output) if (isOutputRange!(O, string)) {
 	// First, we need to turn every embedded code into a $(D_CODE)
 	while (!input.empty) {
-		assert(input.front.type != Type.embedded,
-		       "You should call parseEmbedded first");
+		assert(input.front.type != Type.embedded, callHighlightMsg);
 		if (input.front.type == Type.dollar) {
 			input.popFront();
 			if (input.front.type == Type.lParen) {
@@ -367,62 +344,6 @@ unittest {
 	auto l3 = Lexer("What about $(TEST me) ?");
 	auto r3 = expand(l3, [ "TEST": "($0" ]);
 	assert(r3 == "What about (me ?", r3);
-}
-
-/**
- * Parse a string and replace embedded code (code between at least 3 '-') with
- * the relevant macros.
- *
- * Params:
- * str = A string that might contain embedded code. Only code will be modified.
- *
- * Returns:
- * A (possibly new) string containing the embedded code put in the proper macros.
- */
-string parseEmbedded(string str) {
-	import std.string : representation;
-	static import dlex = std.d.lexer;
-
-	enum fName = "<embedded-code-in-documentation>";
-	auto cache = dlex.StringCache(dlex.StringCache.defaultBucketCount);
-	auto lex = Lexer(str, true);
-	auto output = appender!string;
-	while (!lex.empty) {
-		if (lex.front.type == Type.embedded) {
-			output.put("$(D_CODE ");
-			auto toks = dlex.byToken(lex.front.text.representation.dup,
-						 dlex.LexerConfig(fName, dlex.StringBehavior.source,
-								  dlex.WhitespaceBehavior.include), &cache);
-			while (!toks.empty) {
-				if (dlex.isStringLiteral(toks.front.type)) {
-					output.put("$(D_STRING ");
-					output.put(toks.front.text);
-					output.put(")");
-				} else if (toks.front == dlex.tok!"comment") {
-					output.put("$(D_COMMENT ");
-					output.put(toks.front.text);
-					output.put(")");
-				} else if (dlex.isKeyword(toks.front.type) || dlex.isBasicType(toks.front.type)) {
-					output.put("$(D_KEYWORD ");
-					output.put(dlex.str(toks.front.type));
-					output.put(")");
-					// TODO: D_PSYMBOL / D_PARAM.
-					// They seem implemented in DMD, but I cannot see the expected effect on dlang.org.
-					// So for the time being it works without them, but it should be implemented.
-				} else if (toks.front.text.length) {
-					output.put(toks.front.text);
-				} else {
-					output.put(dlex.str(toks.front.type));
-				}
-				toks.popFront();
-			}
-			output.put(")");
-		}
-		else
-			output.put(lex.front.text);
-		lex.popFront();
-	}
-	return output.data;
 }
 
 /**
@@ -609,7 +530,7 @@ size_t collectMacroArguments(Lexer input, ref string[11] args) {
 	if (input.empty) return 0;
 	args[0] = input.text[tokOffset(input) .. $];
 	while (!input.empty) {
-		assert(input.front.type != Type.embedded, "You should call parseEmbedded first");
+		assert(input.front.type != Type.embedded, callHighlightMsg);
 		switch (input.front.type) {
 		case Type.comma:
 			if (argPos <= 9)
@@ -705,7 +626,7 @@ bool replaceArgs(O)(string val, in string[11] args, O output) {
 	bool hasEnd;
 	auto lex = Lexer(val, true);
 	while (!lex.empty) {
-		assert(lex.front.type != Type.embedded, "You should call parseEmbedded first");
+		assert(lex.front.type != Type.embedded, callHighlightMsg);
 		switch (lex.front.type) {
 		case Type.dollar:
 			lex.popFront();
@@ -777,7 +698,7 @@ void replaceMacs(O)(string val, in string[string] macros, O output) {
 	bool hasEnd;
 	auto lex = Lexer(val, true);
 	while (!lex.empty) {
-		assert(lex.front.type != Type.embedded, "You should call parseEmbedded first");
+		assert(lex.front.type != Type.embedded, callHighlightMsg);
 		switch (lex.front.type) {
 		case Type.dollar:
 			lex.popFront();
@@ -862,7 +783,7 @@ unittest {
 	assert(l6.empty);
 }
 
-size_t tokOffset(in Lexer lex) { return lex.offset - lex.front.text.length; }
+package size_t tokOffset(in Lexer lex) { return lex.offset - lex.front.text.length; }
 
 unittest {
 	import std.format : text;
@@ -888,3 +809,5 @@ void stripWhitespace(ref Lexer lexer) {
 	while (!lexer.empty && (lexer.front.type == Type.whitespace || lexer.front.type == Type.newline))
 		lexer.popFront();
 }
+
+enum callHighlightMsg = "You should call ddoc.hightlight.hightlight(string) first.";

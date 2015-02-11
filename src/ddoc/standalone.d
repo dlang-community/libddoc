@@ -45,6 +45,7 @@ string parseFile(string path, in string[string] context) {
 
 string parseDDString(string text, string[string] macros)
 {
+	import ddoc.highlight;
 	import std.string : strip;
 	import std.algorithm : startsWith;
 	import std.array : appender;
@@ -52,7 +53,7 @@ string parseDDString(string text, string[string] macros)
 	assert(text.startsWith("Ddoc"), "the string should start with 'Ddoc'");
 
 	// First thing, we turn embedded doc into macros
-	text = parseEmbedded(text[4..$]);
+	text = highlight(text[4..$]);
 	
 	// The doc is between "Ddoc" (which must be at the beginning of the file)
 	// and the "Macros" sections. So first we need to find the later.
