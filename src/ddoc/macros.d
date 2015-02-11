@@ -74,6 +74,7 @@ unittest {
 	auto s4 = `Here is some embedded D code I'd like to show you:
 $(MY_D_CODE
 ------
+// Entry point...
 void main() {
   import std.stdio : writeln;
   writeln("Hello,", " ", "world", "!");
@@ -86,9 +87,10 @@ Isn't it pretty ?`;
 	// macros (see: TODO).
 	auto r4 = expand(l4, [ "MY_D_CODE": "<code>$1</code>", "D_CODE": "$0" ]);
 	auto e4 = `Here is some embedded D code I'd like to show you:
-<code>void main() {
-  import std.stdio : writeln;
-  writeln("Hello,", " ", "world", "!");
+<code><font color=green>// Entry point...</font>
+<font color=blue>void</font> main() {
+  <font color=blue>import</font> std.stdio : writeln;
+  writeln(<font color=red>"Hello,"</font>, <font color=red>" "</font>, <font color=red>"world"</font>, <font color=red>"!"</font>);
 }
 </code>
 Isn't it pretty ?`;
@@ -378,12 +380,42 @@ unittest {
  * A (possibly new) string containing the embedded code put in the proper macros.
  */
 string parseEmbedded(string str) {
+	import std.string : representation;
+	static import dlex = std.d.lexer;
+
+	enum fName = "<embedded-code-in-documentation>";
+	auto cache = dlex.StringCache(dlex.StringCache.defaultBucketCount);
 	auto lex = Lexer(str, true);
 	auto output = appender!string;
 	while (!lex.empty) {
 		if (lex.front.type == Type.embedded) {
 			output.put("$(D_CODE ");
-			output.put(lex.front.text);
+			auto toks = dlex.byToken(lex.front.text.representation.dup,
+						 dlex.LexerConfig(fName, dlex.StringBehavior.source,
+								  dlex.WhitespaceBehavior.include), &cache);
+			while (!toks.empty) {
+				if (dlex.isStringLiteral(toks.front.type)) {
+					output.put("$(D_STRING ");
+					output.put(toks.front.text);
+					output.put(")");
+				} else if (toks.front == dlex.tok!"comment") {
+					output.put("$(D_COMMENT ");
+					output.put(toks.front.text);
+					output.put(")");
+				} else if (dlex.isKeyword(toks.front.type) || dlex.isBasicType(toks.front.type)) {
+					output.put("$(D_KEYWORD ");
+					output.put(dlex.str(toks.front.type));
+					output.put(")");
+					// TODO: D_PSYMBOL / D_PARAM.
+					// They seem implemented in DMD, but I cannot see the expected effect on dlang.org.
+					// So for the time being it works without them, but it should be implemented.
+				} else if (toks.front.text.length) {
+					output.put(toks.front.text);
+				} else {
+					output.put(dlex.str(toks.front.type));
+				}
+				toks.popFront();
+			}
 			output.put(")");
 		}
 		else

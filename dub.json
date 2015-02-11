@@ -17,5 +17,8 @@
 		"targetType": "executable",
 		"versions": [ "LIBDDOC_CONFIG_EXE" ]
 	}
-	]
+	],
+	"dependencies": {
+		"libdparse": "~master"
+	}
 }
