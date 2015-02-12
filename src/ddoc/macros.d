@@ -805,9 +805,14 @@ string lookup(in string name, in string[string] macros, string defVal = null) {
 	return *p;
 }
 
-void stripWhitespace(ref Lexer lexer) {
-	while (!lexer.empty && (lexer.front.type == Type.whitespace || lexer.front.type == Type.newline))
+/// Returns: The number of offset skipped.
+package size_t stripWhitespace(ref Lexer lexer) {
+	size_t start = lexer.offset;
+	while (!lexer.empty && (lexer.front.type == Type.whitespace || lexer.front.type == Type.newline)) {
+		start = lexer.offset;
 		lexer.popFront();
+	}
+	return start;
 }
 
 enum callHighlightMsg = "You should call ddoc.hightlight.hightlight(string) first.";

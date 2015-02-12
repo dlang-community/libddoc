@@ -59,9 +59,9 @@ string parseDDString(string text, string[string] macros)
 	parseMacrosSection(text, macros);
 
 	// Get the copyright section
-	auto copyright = getSection("Copyright", Lexer(text), macros).content;
-	if (copyright !is null)
-		macros["COPYRIGHT"] = copyright;
+	//auto copyright = getSection("Copyright", text, macros).content;
+	//if (copyright !is null)
+	//	macros["COPYRIGHT"] = copyright;
 	text = highlight(text);
 	auto lexer = Lexer(text, true);
 	return expand(lexer, macros);
@@ -87,22 +87,6 @@ Macros:
 	// Whitespace and newline before / after not taken into account.
 	auto res = parseDDString(text, null).strip;
 	assert(res == expected, res);
-}
-
-private Section getSection(string name, Lexer lexer, ref string[string] macros) {
-	while (!lexer.empty)
-		switch (lexer.front.type) {
-		case Type.header:
-			string sectionName = lexer.front.text;
-			if (sectionName == name) {
-				return parseSection(name, lexer, macros);
-			}
-			goto default;
-		default:
-			lexer.popFront();
-			break;
-		}
-	return typeof(return).init;
 }
 
 // Warning: Does not support embedded code / inlining.

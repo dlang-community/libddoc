@@ -282,9 +282,25 @@ Returns:
  * (unmatching parenthesis, too much arguments to a macro...).
  */
 class DdocException : Exception {
+nothrow pure @safe:
 	this(string msg, string file = __FILE__,
-	     size_t line = __LINE__, Throwable next = null) pure nothrow @safe {
+	     size_t line = __LINE__, Throwable next = null) {
 		super(msg, file, line, next);
+	}
+
+	// Allow method chaining:
+	// throw new DdocException().snippet(lexer.text);
+	@property DdocException snippet(string s) { m_snippet = s; return this; }
+	@property string snippet() const { return m_snippet; }
+	private string m_snippet;
+}
+
+class DdocParseException : DdocException {
+nothrow pure @safe:
+	this(string msg, string code, string file = __FILE__,
+	     size_t line = __LINE__, Throwable next = null) {
+		super(msg, file, line, next);
+		this.snippet = code;
 	}
 }
 
