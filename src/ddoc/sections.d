@@ -95,24 +95,18 @@ Section parseMacrosOrParams(string name, ref Lexer lexer, ref string[string] mac
  */
 Section parseSection(string name, ref Lexer lexer, ref string[string] macros)
 {
-	import std.array : appender;
+	import ddoc.macros : tokOffset;
 	if (name == "Macros" || name == "Params" || name == "Escapes")
 		return parseMacrosOrParams(name, lexer, macros);
 
 	Section s;
 	s.name = name;
-	auto app = appender!string();
+	size_t start = tokOffset(lexer);
+	size_t end = start;
 	loop: while (!lexer.empty) switch (lexer.front.type)
 	{
 	case Type.header:
 		break loop;
-	case Type.dollar:
-		lexer.popFront();
-		if (lexer.empty || lexer.front.type != Type.lParen)
-			app.put("$");
-		else
-			app.put(expandMacro(lexer, macros));
-		break;
 	case Type.newline:
 		lexer.popFront();
 		if (lexer.empty || (name == "Summary" && lexer.front.type == Type.newline))
@@ -120,25 +114,13 @@ Section parseSection(string name, ref Lexer lexer, ref string[string] macros)
 			lexer.popFront();
 			break loop;
 		}
-		app.put("\n");
-		break;
-	case Type.embedded:
-		app.put(`<pre><code>`);
-		app.put(lexer.front.text);
-		app.put(`</code></pre>`);
-		lexer.popFront();
-		break;
-	case Type.inlined:
-		app.put(`<pre class="inlined"><code>`);
-		app.put(lexer.front.text);
-		app.put(`</code></pre>`);
-		lexer.popFront();
+		end = lexer.offset;
 		break;
 	default:
-		app.put(lexer.front.text);
+		end = lexer.offset;
 		lexer.popFront();
 		break;
 	}
-	s.content = app.data;
+	s.content = lexer.text[start .. end];
 	return s;
 }

@@ -51,10 +51,8 @@ string parseDDString(string text, string[string] macros)
 	import std.array : appender;
 
 	assert(text.startsWith("Ddoc"), "the string should start with 'Ddoc'");
+	text = text[4 .. $];
 
-	// First thing, we turn embedded doc into macros
-	text = highlight(text[4..$]);
-	
 	// The doc is between "Ddoc" (which must be at the beginning of the file)
 	// and the "Macros" sections. So first we need to find the later.
 	// Get macros and expand them.
@@ -64,6 +62,7 @@ string parseDDString(string text, string[string] macros)
 	auto copyright = getSection("Copyright", Lexer(text), macros).content;
 	if (copyright !is null)
 		macros["COPYRIGHT"] = copyright;
+	text = highlight(text);
 	auto lexer = Lexer(text, true);
 	return expand(lexer, macros);
 }
@@ -106,11 +105,11 @@ private Section getSection(string name, Lexer lexer, ref string[string] macros) 
 	return typeof(return).init;
 }
 
+// Warning: Does not support embedded code / inlining.
 private string parseDdocBody(string[string] macros) {
 	auto lexer = Lexer("$(DDOC)", true);
 	return expandMacro(lexer, macros);
 }
-
 
 private void parseMacrosSection(ref string text, ref string[string] macros) {
 	import std.string : indexOf;

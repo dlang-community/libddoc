@@ -41,11 +41,7 @@ string highlight(string str) {
 	import ddoc.lexer;
 	import ddoc.macros : tokOffset;
 	import std.array : appender;
-	import std.string : representation;
-	static import dlex = std.d.lexer;
 
-	enum fName = "<embedded-code-in-documentation>";
-	auto cache = dlex.StringCache(dlex.StringCache.defaultBucketCount);
 	auto lex = Lexer(str, true);
 	auto output = appender!string;
 	size_t start;
@@ -54,34 +50,19 @@ string highlight(string str) {
 	size_t end;
 	while (!lex.empty) {
 		if (lex.front.type == Type.embedded) {
-			output.put(lex.text[start .. end]);
+			if (start != end)
+				output.put(lex.text[start .. end]);
 			output.put("$(D_CODE ");
-			auto toks = dlex.byToken(lex.front.text.representation.dup,
-						 dlex.LexerConfig(fName, dlex.StringBehavior.source,
-								  dlex.WhitespaceBehavior.include), &cache);
-			while (!toks.empty) {
-				if (dlex.isStringLiteral(toks.front.type)) {
-					output.put("$(D_STRING ");
-					output.put(toks.front.text);
-					output.put(")");
-				} else if (toks.front == dlex.tok!"comment") {
-					output.put("$(D_COMMENT ");
-					output.put(toks.front.text);
-					output.put(")");
-				} else if (dlex.isKeyword(toks.front.type) || dlex.isBasicType(toks.front.type)) {
-					output.put("$(D_KEYWORD ");
-					output.put(dlex.str(toks.front.type));
-					output.put(")");
-				} else if (toks.front.text.length) {
-					output.put(toks.front.text);
-				} else {
-					output.put(dlex.str(toks.front.type));
-				}
-				toks.popFront();
-			}
+			highlightCode(lex.front.text, output);
 			output.put(")");
 			start = lex.offset;
-			lex.popFront();
+		} else if (lex.front.type == Type.inlined) {
+			if (start != end)
+				output.put(lex.text[start .. end]);
+			output.put("$(DDOC_BACKQUOTED ");
+			highlightCode(lex.front.text, output);
+			output.put(")");
+			start = lex.offset;
 		}
 		end = lex.offset;
 		lex.popFront();
@@ -150,4 +131,37 @@ $(D_CODE $(D_KEYWORD unittest) {
 })`;
 	auto r1 = highlight(s1);
 	assert(r1 == e1, r1);
+}
+
+private:
+void highlightCode(O)(string code, ref O output) {
+	import std.d.lexer;
+	import std.string : representation;
+	enum fName = "<embedded-code-in-documentation>";
+
+	auto cache = StringCache(StringCache.defaultBucketCount);
+	auto toks = code.representation.dup
+		.byToken(LexerConfig(fName, StringBehavior.source,
+				     WhitespaceBehavior.include), &cache);
+	while (!toks.empty) {
+		if (toks.front.type.isStringLiteral) {
+			output.put("$(D_STRING ");
+			output.put(toks.front.text);
+			output.put(")");
+		} else if (toks.front == tok!"comment") {
+			output.put("$(D_COMMENT ");
+			output.put(toks.front.text);
+			output.put(")");
+		} else if (toks.front.type.isKeyword
+			   || toks.front.type.isBasicType) {
+			output.put("$(D_KEYWORD ");
+			output.put(toks.front.type.str);
+			output.put(")");
+		} else if (toks.front.text.length) {
+			output.put(toks.front.text);
+		} else {
+			output.put(toks.front.type.str);
+		}
+		toks.popFront();
+	}
 }
