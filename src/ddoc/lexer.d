@@ -54,9 +54,10 @@ struct Lexer
 	 * Params:
 	 *     text = the _text to lex
 	 */
-	this(string text)
+	this(string text, bool skipHeader = false)
 	{
 		this.text = text;
+		this.parseHeader = !skipHeader;
 		popFront();
 	}
 
@@ -158,7 +159,7 @@ struct Lexer
 		}
 	}
 
-private:
+//private:
 
 	void lexWord()
 	{
@@ -178,7 +179,7 @@ private:
 		}
 		current.type = Type.word;
 		current.text = text[oldOffset .. offset];
-		if (prevIsNewline(oldOffset, text) && offset < text.length && text[offset] == ':')
+		if (parseHeader && prevIsNewline(oldOffset, text) && offset < text.length && text[offset] == ':')
 		{
 			current.type = Type.header;
 			offset++;
@@ -210,6 +211,7 @@ private:
 	size_t offset;
 	string text;
 	bool _empty;
+	bool parseHeader;
 }
 
 unittest
@@ -273,6 +275,34 @@ Returns:
 	assert (equal(l.map!(a => a.type), expected));
 }
 
+/**
+ * Class for library exception.
+ *
+ * Most often, this is thrown when a Ddoc document is misformatted
+ * (unmatching parenthesis, too much arguments to a macro...).
+ */
+class DdocException : Exception {
+nothrow pure @safe:
+	this(string msg, string file = __FILE__,
+	     size_t line = __LINE__, Throwable next = null) {
+		super(msg, file, line, next);
+	}
+
+	// Allow method chaining:
+	// throw new DdocException().snippet(lexer.text);
+	@property DdocException snippet(string s) { m_snippet = s; return this; }
+	@property string snippet() const { return m_snippet; }
+	private string m_snippet;
+}
+
+class DdocParseException : DdocException {
+nothrow pure @safe:
+	this(string msg, string code, string file = __FILE__,
+	     size_t line = __LINE__, Throwable next = null) {
+		super(msg, file, line, next);
+		this.snippet = code;
+	}
+}
 
 bool prevIsNewline(size_t offset, immutable string text) pure nothrow
 {

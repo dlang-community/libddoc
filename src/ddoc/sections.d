@@ -9,15 +9,13 @@ import ddoc.lexer;
 import ddoc.macros;
 import std.typecons;
 
-alias KeyValuePair = Tuple!(string, string);
-
 /**
  * Standard section names
  */
 immutable string[] STANDARD_SECTIONS = [
 	"Authors", "Bugs", "Copyright", "Date",
 	"Deprecated", "Examples", "History", "License",
-	"Returns", "See_also", "Standards", "Throws",
+	"Returns", "See_Also", "Standards", "Throws",
 	"Version"
 ];
 
@@ -76,7 +74,7 @@ Section parseMacrosOrParams(string name, ref Lexer lexer, ref string[string] mac
 		string[string] m;
 		if (name != "Macros")
 			m = macros;
-		if (!parseKeyValuePair(lexer, s.mapping, m))
+		if (!parseKeyValuePair(lexer, s.mapping))
 			break;
 		if (name == "Macros")
 		{
@@ -88,144 +86,168 @@ Section parseMacrosOrParams(string name, ref Lexer lexer, ref string[string] mac
 }
 
 /**
- * Returns: true if the parsing succeeded
- */
-bool parseKeyValuePair(ref Lexer lexer, ref KeyValuePair[] pairs, string[string] macros)
-{
-	import std.array;
-	string key;
-	while (!lexer.empty && (lexer.front.type == Type.whitespace
-		|| lexer.front.type == Type.newline))
-	{
-		lexer.popFront();
-	}
-	if (!lexer.empty && lexer.front.type == Type.word)
-	{
-		key = lexer.front.text;
-		lexer.popFront();
-	}
-	else
-		return false;
-	while (!lexer.empty && lexer.front.type == Type.whitespace)
-		lexer.popFront();
-	if (!lexer.empty && lexer.front.type == Type.equals)
-		lexer.popFront();
-	else
-		return false;
-	if (lexer.front.type == Type.whitespace)
-		lexer.popFront();
-	auto app = appender!string();
-	loop: while (!lexer.empty) switch (lexer.front.type)
-	{
-	case Type.newline:
-		Lexer savePoint = lexer;
-		while (!lexer.empty && (lexer.front.type == Type.newline || lexer.front.type == Type.whitespace))
-			lexer.popFront();
-		if (lexer.front.type == Type.word)
-		{
-			string w = lexer.front.text;
-			lexer.popFront();
-			bool ws;
-			while (!lexer.empty && lexer.front.type == Type.whitespace)
-			{
-				ws = true;
-				lexer.popFront();
-			}
-			if (lexer.front.type == Type.equals)
-			{
-				lexer = savePoint;
-				break loop;
-			}
-			else
-			{
-				app.put(" ");
-				app.put(w);
-				if (ws)
-					app.put(" ");
-			}
-		}
-		else if (lexer.front.type == Type.header)
-			break loop;
-		else
-		{
-			if (!lexer.empty)
-				app.put(" ");
-			app.put(lexer.front.text);
-			lexer.popFront();
-		}
-		break;
-	case Type.whitespace:
-		app.put(" ");
-		lexer.popFront();
-		break;
-	case Type.header:
-		break loop;
-	default:
-		app.put(lexer.front.text);
-		lexer.popFront();
-//		break;
-	}
-	Lexer l = Lexer(app.data);
-	auto val = appender!string();
-	expandMacros(l, macros, val);
-	pairs ~= KeyValuePair(key, val.data);
-	return true;
-}
-
-/**
- * Parses a section.
+ * Split a text into sections.
+ *
+ * Takes a text, which is generally a full comment (usually you'll also call
+ * $(D unDecorateComment) before). It splits it in an array of $(D Section)
+ * and returns it.
+ * Whatever the content of $(D text) is, this function will always return an
+ * array of at least 2 items. Those 2 sections are the "Summary" and "Description"
+ * sections (which may be empty).
+ *
  * Params:
- *     name = the section name
- *     lexer = the lexer
- *     macros = the macros used for substitution
- * Returns: the parsed section
+ * text = A DDOC-formatted comment.
+ *
+ * Returns:
+ * An array of $(D Section) with at least 2 elements.
  */
-Section parseSection(string name, ref Lexer lexer, ref string[string] macros)
-{
+Section[] splitSections(string text) {
 	import std.array : appender;
-	if (name == "Macros" || name == "Params" || name == "Escapes")
-		return parseMacrosOrParams(name, lexer, macros);
 
-	Section s;
-	s.name = name;
-	auto app = appender!string();
-	loop: while (!lexer.empty) switch (lexer.front.type)
-	{
+	/*
+	 * Note: The specs says those sections are unnamed. So some people could
+	 * name one of it's section 'Summary' or 'Description', and it would be
+	 * legal (but arguably wrong).
+	 */
+	auto lex = Lexer(text);
+	auto app = appender!(Section[]);
+	bool hasSum, hasDesc;
+	// Used to strip trailing newlines / whitespaces.
+	size_t offset, end;
+	string name;
+	app ~= [ Section(), Section() ];
+	// Strip leading whitespace
+	//end = offset = lex.stripWhitespace();
+	while (!lex.empty) switch (lex.front.type) {
 	case Type.header:
-		break loop;
-	case Type.dollar:
-		lexer.popFront();
-		if (lexer.empty || lexer.front.type != Type.lParen)
-			app.put("$");
-		else
-			app.put(expandMacro(lexer, macros));
+		if (hasSum && hasDesc) {
+			assert(name !is null);
+			appendSection(name, lex.text[offset..end], app);
+		}
+		if (!hasSum) {
+			hasSum = true;
+			app.data[0].content = lex.text[offset..end];
+			end = offset = lex.offset;
+		}
+		if (!hasDesc) {
+			hasDesc = true;
+			app.data[1].content = lex.text[offset..end];
+			end = offset = lex.offset;
+		}
+		name = lex.front.text;
+		lex.popFront();
+		end = offset = lex.stripWhitespace();
 		break;
 	case Type.newline:
-		lexer.popFront();
-		if (lexer.empty || (name == "Summary" && lexer.front.type == Type.newline))
-		{
-			lexer.popFront();
-			break loop;
+		lex.popFront();
+		if (!hasSum && lex.front.type == Type.newline) {
+			hasSum = true;
+			app.data[0].content = lex.text[offset..end];
+			end = offset = lex.offset;
+			lex.popFront();
 		}
-		app.put("\n");
 		break;
 	case Type.embedded:
-		app.put(`<pre><code>`);
-		app.put(lexer.front.text);
-		app.put(`</code></pre>`);
-		lexer.popFront();
-		break;
-	case Type.inlined:
-		app.put(`<pre class="inlined"><code>`);
-		app.put(lexer.front.text);
-		app.put(`</code></pre>`);
-		lexer.popFront();
+		// If examples are contiguous to each others
+		if (name != "Examples") {
+			string prev = lex.text[offset..end];
+			if (!hasSum) {
+				app.data[0].content = prev;
+				hasSum = hasDesc = true;
+			} else if (!hasDesc) {
+				hasDesc = true;
+				app.data[0].content = prev;
+			} else
+				appendSection(name, prev, app);
+			name = "Examples";
+			auto tmp = Lexer(lex.text[end .. $]);
+			offset = end + tmp.stripWhitespace();
+			end = lex.offset;
+			lex.popFront();
+		} else
+			end = lex.offset;
 		break;
 	default:
-		app.put(lexer.front.text);
-		lexer.popFront();
+		end = lex.offset;
+		lex.popFront();
 		break;
 	}
-	s.content = app.data;
-	return s;
+
+	if (name !is null)
+		appendSection(name, lex.text[offset..end], app);
+
+	return app.data;
+}
+
+unittest {
+	import std.format : text;
+
+	auto s1 = `Short comment.
+Still comment.
+
+Description.
+Still desc...
+
+Still
+
+Authors:
+Me & he
+Bugs:
+None
+Copyright:
+Date:
+
+Deprecated:
+Nope,
+
+------
+void foo() {}
+----
+
+History:
+License:
+Returns:
+See_Also
+See_Also:
+Standards:
+
+Throws:
+Version:
+
+
+`;
+	auto cnt =
+		[ "Short comment.\nStill comment.",
+		  "Description.\nStill desc...\n\nStill",
+		  "Me & he", "None", "", "", "Nope,",
+		  "------\nvoid foo() {}\n----", "", "",
+		  "See_Also", "", "", "", "" ];
+	foreach (idx, sec; splitSections(s1)) {
+		if (idx < 2) // Summary & description
+			assert(sec.name is null, sec.name);
+		else
+			assert(sec.name == STANDARD_SECTIONS[idx-2], sec.name);
+		assert(sec.content == cnt[idx],
+		       text(sec.name, " (", idx, "): ", sec.content));
+	}
+}
+
+private:
+/// Append a section to the given output or merge it if a section with
+/// the same name already exists.
+///
+/// Returns:
+/// $(D true) if the section did not already exists,
+/// $(D false) if the content was merged with an existing section.
+bool appendSection(O)(string name, string content, ref O output) in {
+	assert(name !is null, "You should not call appendSection with a null name");
+} body {
+	for (size_t i = 2; i < output.data.length; ++i) {
+		if (output.data[i].name == name) {
+			output.data[i].content ~= content;
+			return false;
+		}
+	}
+	output ~= Section(name, content);
+	return true;
 }
