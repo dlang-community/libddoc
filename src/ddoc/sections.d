@@ -163,9 +163,10 @@ Section[] splitSections(string text) {
 			auto tmp = Lexer(lex.text[end .. $]);
 			offset = end + tmp.stripWhitespace();
 			end = lex.offset;
-			lex.popFront();
 		} else
 			end = lex.offset;
+
+		lex.popFront();
 		break;
 	default:
 		end = lex.offset;
