@@ -33,7 +33,7 @@ module ddoc.macros;
 
 ///
 unittest {
-	import std.format : text;
+	import std.conv : text;
 	import ddoc.lexer;
 
 	// Ddoc has some hardwired macros, which will be automatically searched.
@@ -80,6 +80,7 @@ import std.exception;
 import std.range;
 import std.algorithm;
 import std.stdio;
+import std.typecons : Tuple;
 
 alias KeyValuePair = Tuple!(string, string);
 
@@ -250,12 +251,12 @@ unittest {
  * output = An $(D OutputRange) to write to.
  */
 void expandMacro(O)(ref Lexer input, in string[string] macros, O output) if (isOutputRange!(O, string)) in {
-		import std.format : text;
+		import std.conv : text;
 		assert(input.front.type == Type.dollar
 		       || input.front.type == Type.lParen,
 		       text("$ or ( expected, not ", input.front.type));
 } body {
-	import std.format : text;
+	import std.conv : text;
 
 	if (input.front.type == Type.dollar)
 		input.popFront();
@@ -266,7 +267,7 @@ void expandMacro(O)(ref Lexer input, in string[string] macros, O output) if (isO
 
 /// Ditto
 string expandMacro(ref Lexer input, in string[string] macros) in {
-	import std.format : text;
+	import std.conv : text;
 	assert(input.front.type == Type.dollar
 	       || input.front.type == Type.lParen,
 	       text("$ or ( expected, not ", input.front.type));
@@ -396,7 +397,7 @@ string[string] parseMacrosFile(R)(R paths) if (isInputRange!(R)) {
  */
 bool parseKeyValuePair(ref Lexer lexer, ref KeyValuePair[] pairs) {
 	import std.array : appender;
-	import std.format : text;
+	import std.conv : text;
 	string prevKey, key;
 	string prevValue, value;
 	while (!lexer.empty) {
@@ -439,7 +440,7 @@ bool parseKeyValuePair(ref Lexer lexer, ref KeyValuePair[] pairs) {
 private:
 // upperArgs is a string[11] actually, or null.
 void expandMacroImpl(O)(Lexer input, in string[string] macros, O output) {
-	import std.format : text;
+	import std.conv : text;
 
 	//debug writeln("Expanding: ", input.text);
 	// Check if the macro exist and get it's value.
@@ -522,7 +523,7 @@ private bool parseAsKeyValuePair(ref Lexer olexer, ref string key, ref string va
 
 // Note: For macro $(NAME arg1,arg2), collectMacroArguments receive "arg1,arg2".
 size_t collectMacroArguments(Lexer input, ref string[11] args) {
-	import std.format : text;
+	import std.conv : text;
 
 	size_t argPos = 1;
 	size_t argStart = tokOffset(input);
@@ -559,7 +560,7 @@ size_t collectMacroArguments(Lexer input, ref string[11] args) {
 }
 
 unittest {
-	import std.format : text;
+	import std.conv : text;
 	string[11] args;
 
 	auto l1 = Lexer(`Hello, world`);
@@ -620,7 +621,7 @@ unittest {
 // Where the grunt work is done...
 
 bool replaceArgs(O)(string val, in string[11] args, O output) {
-	import std.format : text;
+	import std.conv : text;
 	import std.ascii : isDigit;
 
 	bool hasEnd;
@@ -730,7 +731,7 @@ void replaceMacs(O)(string val, in string[string] macros, O output) {
  * If no matching parenthesis is met, returns null (and $(D lexer) will be empty).
  */
 string matchParenthesis(ref Lexer lexer, bool* hasEnd = null) in {
-	import std.format : text;
+	import std.conv : text;
 	assert(lexer.front.type == Type.lParen, text(lexer.front));
 	assert(lexer.offset);
 } body {
@@ -786,7 +787,7 @@ unittest {
 package size_t tokOffset(in Lexer lex) { return lex.offset - lex.front.text.length; }
 
 unittest {
-	import std.format : text;
+	import std.conv : text;
 
 	auto lex = Lexer(`My  (friend) $ lives abroad`);
 	auto expected = [0, 2, 4, 5, 11, 12, 13, 14, 15, 20, 21];

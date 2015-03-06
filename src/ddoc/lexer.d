@@ -3,7 +3,6 @@
  * Authors: Brian Schott
  * License: $(LINK2 http://www.boost.org/LICENSE_1_0.txt Boost License 1.0)
  */
-
 module ddoc.lexer;
 
 /**
@@ -11,29 +10,17 @@ module ddoc.lexer;
  */
 enum Type : ubyte
 {
-	/// $(LPAREN)
-	lParen,
-	/// $(RPAREN)
-	rParen,
-	/// $
-	dollar,
-	/// whitespace
-	whitespace,
-	/// newline
-	newline,
-	/// embedded D code
-	embedded,
-	/// backtick-inlined code
-	inlined,
-	/// ,
-	comma,
-	/// =
-	equals,
-	/// section header
-	header,
-	/// Anything else
-	word,
-
+	lParen, /// $(LPAREN)
+	rParen, /// $(RPAREN)
+	dollar, /// $
+	whitespace, /// whitespace
+	newline, /// newline
+	embedded, /// embedded D code
+	inlined, /// backtick-inlined code
+	comma, /// ,
+	equals, /// =
+	header, /// section header
+	word, /// Anything else
 }
 
 /**
@@ -75,10 +62,11 @@ struct Lexer
 	{
 		if (offset >= text.length)
 			_empty = true;
-		while (offset < text.length) switch (text[offset])
-		{
-		case '`':
-			offset++;
+		while (offset < text.length)
+			switch (text[offset])
+			{
+			case '`':
+				offset++;
 			immutable size_t inlineCode = inlineCodeIndex();
 			if (inlineCode == size_t.max)
 			{
@@ -93,23 +81,41 @@ struct Lexer
 			}
 			return;
 		case ',':
-			current.text = text[offset .. offset + 1]; current.type = Type.comma; offset++; return;
+			current.text = text[offset .. offset + 1];
+			current.type = Type.comma;
+			offset++;
+			return;
 		case '=':
-			current.text = text[offset .. offset + 1]; current.type = Type.equals; offset++; return;
+			current.text = text[offset .. offset + 1];
+			current.type = Type.equals;
+			offset++;
+			return;
 		case '$':
-			current.text = text[offset .. offset + 1]; current.type = Type.dollar; offset++; return;
+			current.text = text[offset .. offset + 1];
+			current.type = Type.dollar;
+			offset++;
+			return;
 		case '(':
-			current.text = text[offset .. offset + 1]; current.type = Type.lParen; offset++; return;
+			current.text = text[offset .. offset + 1];
+			current.type = Type.lParen;
+			offset++;
+			return;
 		case ')':
-			current.text = text[offset .. offset + 1]; current.type = Type.rParen; offset++; return;
+			current.text = text[offset .. offset + 1];
+			current.type = Type.rParen;
+			offset++;
+			return;
 		case '\r':
 			offset++;
-			goto case;
+			goto case ;
 		case '\n':
-			current.text = text[offset .. offset + 1]; current.type = Type.newline; offset++; return;
+			current.text = text[offset .. offset + 1];
+			current.type = Type.newline;
+			offset++;
+			return;
 		case '-':
-			if (((offset > 0 && prevIsNewline(offset, text)) || offset == 0) &&
-				offset + 3 < text.length && text[offset .. offset + 3] == "---")
+			if (((offset > 0 && prevIsNewline(offset, text)) || offset == 0)
+				&& offset + 3 < text.length && text[offset .. offset + 3] == "---")
 			{
 				current.type = Type.embedded;
 				// skip opening dashes
@@ -124,8 +130,8 @@ struct Lexer
 				{
 					if (offset >= text.length)
 						break;
-					if (text[offset] == '-' && offset > 0
-						&& prevIsNewline(offset, text) && offset + 3 <= text.length
+					if (text[offset] == '-' && offset > 0 && prevIsNewline(offset, text)
+						&& offset + 3 <= text.length
 						&& text[offset .. offset + 3] == "---")
 					{
 						current.text = sliceBegin >= offset ? null : text[sliceBegin .. offset - 1];
@@ -148,7 +154,8 @@ struct Lexer
 		case ' ':
 		case '\t':
 			size_t oldOffset = offset;
-			while (offset < text.length && (text[offset] == ' ' || text[offset] == '\t'))
+			while (offset < text.length && (text[offset] == ' '
+				|| text[offset] == '\t'))
 				offset++;
 			current.type = Type.whitespace;
 			current.text = text[oldOffset .. offset];
@@ -159,14 +166,13 @@ struct Lexer
 		}
 	}
 
-//private:
-
+	//private:
 	void lexWord()
 	{
-		import std.utf:decode;
+		import std.utf : decode;
 		import std.uni : isNumber, isAlpha;
-		size_t oldOffset = offset;
 
+		size_t oldOffset = offset;
 		while (true)
 		{
 			text.decode(offset);
@@ -179,7 +185,8 @@ struct Lexer
 		}
 		current.type = Type.word;
 		current.text = text[oldOffset .. offset];
-		if (parseHeader && prevIsNewline(oldOffset, text) && offset < text.length && text[offset] == ':')
+		if (parseHeader && prevIsNewline(oldOffset, text) && offset < text.length
+			&& text[offset] == ':')
 		{
 			current.type = Type.header;
 			offset++;
@@ -189,11 +196,11 @@ struct Lexer
 	size_t inlineCodeIndex() const
 	{
 		import std.algorithm : startsWith;
+
 		size_t o = offset;
 		while (o < text.length)
 		{
-			if (text[o .. $].startsWith("\r")
-				|| text[o .. $].startsWith("\n")
+			if (text[o .. $].startsWith("\r") || text[o .. $].startsWith("\n")
 				|| text[o .. $].startsWith("\u2028")
 				|| text[o .. $].startsWith("\u2029"))
 			{
@@ -216,50 +223,16 @@ struct Lexer
 
 unittest
 {
-	import std.stdio;
-	import std.algorithm;
-	import std.range;
-	auto expected = [
-		Type.whitespace,
-		Type.dollar,
-		Type.lParen,
-		Type.word,
-		Type.whitespace,
-		Type.word,
-		Type.comma,
-		Type.whitespace,
-		Type.word,
-		Type.rParen,
-		Type.whitespace,
-		Type.word,
-		Type.whitespace,
-		Type.word,
-		Type.newline,
-		Type.embedded,
-		Type.newline,
-		Type.header,
-		Type.newline,
-		Type.whitespace,
-		Type.word,
-		Type.whitespace,
-		Type.equals,
-		Type.whitespace,
-		Type.dollar,
-		Type.lParen,
-		Type.word,
-		Type.whitespace,
-		Type.word,
-		Type.rParen,
-		Type.newline,
-		Type.header,
-		Type.newline,
-		Type.whitespace,
-		Type.word,
-		Type.whitespace,
-		Type.word,
-		Type.whitespace,
-		Type.word
-	];
+	import std.algorithm : map, equal;
+
+	auto expected = [Type.whitespace, Type.dollar, Type.lParen, Type.word,
+		Type.whitespace, Type.word, Type.comma, Type.whitespace, Type.word,
+		Type.rParen, Type.whitespace, Type.word, Type.whitespace, Type.word,
+		Type.newline, Type.embedded, Type.newline, Type.header, Type.newline,
+		Type.whitespace, Type.word, Type.whitespace, Type.equals, Type.whitespace,
+		Type.dollar, Type.lParen, Type.word, Type.whitespace, Type.word,
+		Type.rParen, Type.newline, Type.header, Type.newline, Type.whitespace,
+		Type.word, Type.whitespace, Type.word, Type.whitespace, Type.word];
 	Lexer l = Lexer(` $(D something, else) is *a
 ------------
 test
@@ -270,9 +243,9 @@ Params:
 	a = $(A param)
 Returns:
 	nothing of consequence`c);
-//	foreach (t; l)
-//		writeln(t);
-	assert (equal(l.map!(a => a.type), expected));
+	//	foreach (t; l)
+	//		writeln(t);
+	assert(equal(l.map!(a => a.type), expected));
 }
 
 /**
@@ -281,24 +254,37 @@ Returns:
  * Most often, this is thrown when a Ddoc document is misformatted
  * (unmatching parenthesis, too much arguments to a macro...).
  */
-class DdocException : Exception {
+class DdocException : Exception
+{
 nothrow pure @safe:
-	this(string msg, string file = __FILE__,
-	     size_t line = __LINE__, Throwable next = null) {
+	this(string msg, string file = __FILE__, size_t line = __LINE__,
+		Throwable next = null)
+	{
 		super(msg, file, line, next);
 	}
 
 	// Allow method chaining:
 	// throw new DdocException().snippet(lexer.text);
-	@property DdocException snippet(string s) { m_snippet = s; return this; }
-	@property string snippet() const { return m_snippet; }
+	@property DdocException snippet(string s)
+	{
+		m_snippet = s;
+		return this;
+	}
+
+	@property string snippet() const
+	{
+		return m_snippet;
+	}
+
 	private string m_snippet;
 }
 
-class DdocParseException : DdocException {
+class DdocParseException : DdocException
+{
 nothrow pure @safe:
-	this(string msg, string code, string file = __FILE__,
-	     size_t line = __LINE__, Throwable next = null) {
+	this(string msg, string code, string file = __FILE__, size_t line = __LINE__,
+		Throwable next = null)
+	{
 		super(msg, file, line, next);
 		this.snippet = code;
 	}

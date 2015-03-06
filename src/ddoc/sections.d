@@ -3,8 +3,8 @@
  * Authors: Brian Schott
  * License: $(LINK2 http://www.boost.org/LICENSE_1_0.txt Boost License 1.0)
  */
-
 module ddoc.sections;
+
 import ddoc.lexer;
 import ddoc.macros;
 import std.typecons;
@@ -12,13 +12,9 @@ import std.typecons;
 /**
  * Standard section names
  */
-immutable string[] STANDARD_SECTIONS = [
-	"Authors", "Bugs", "Copyright", "Date",
-	"Deprecated", "Examples", "History", "License",
-	"Returns", "See_Also", "Standards", "Throws",
-	"Version"
-];
-
+immutable string[] STANDARD_SECTIONS = ["Authors", "Bugs", "Copyright", "Date",
+	"Deprecated", "Examples", "History", "License", "Returns", "See_Also",
+	"Standards", "Throws", "Version"];
 /**
  *
  */
@@ -26,10 +22,8 @@ struct Section
 {
 	/// The section name
 	string name;
-
 	/// The section content
 	string content;
-
 	/**
 	 * Mapping used by the Params, Macros, and Escapes section types.
 	 *
@@ -40,13 +34,13 @@ struct Section
 	 * )
 	 */
 	KeyValuePair[] mapping;
-
 	/**
 	 * Returns: true if $(B name) is one of $(B STANDARD_SECTIONS)
 	 */
 	bool isStandard() const @property
 	{
 		import std.algorithm;
+
 		return STANDARD_SECTIONS.canFind(name);
 	}
 
@@ -55,9 +49,9 @@ struct Section
 	{
 		Section s;
 		s.name = "Authors";
-		assert (s.isStandard);
+		assert(s.isStandard);
 		s.name = "Butterflies";
-		assert (!s.isStandard);
+		assert(!s.isStandard);
 	}
 }
 
@@ -71,9 +65,6 @@ Section parseMacrosOrParams(string name, ref Lexer lexer, ref string[string] mac
 	s.name = name;
 	while (!lexer.empty && lexer.front.type != Type.header)
 	{
-		string[string] m;
-		if (name != "Macros")
-			m = macros;
 		if (!parseKeyValuePair(lexer, s.mapping))
 			break;
 		if (name == "Macros")
@@ -101,7 +92,8 @@ Section parseMacrosOrParams(string name, ref Lexer lexer, ref string[string] mac
  * Returns:
  * An array of $(D Section) with at least 2 elements.
  */
-Section[] splitSections(string text) {
+Section[] splitSections(string text)
+{
 	import std.array : appender;
 
 	/*
@@ -113,75 +105,85 @@ Section[] splitSections(string text) {
 	auto app = appender!(Section[]);
 	bool hasSum, hasDesc;
 	// Used to strip trailing newlines / whitespaces.
-	size_t offset, end;
+	size_t sliceStart, sliceEnd;
 	string name;
-	app ~= [ Section(), Section() ];
+	app ~= Section();
+	app ~= Section();
 	// Strip leading whitespace
 	//end = offset = lex.stripWhitespace();
-	while (!lex.empty) switch (lex.front.type) {
+	while (!lex.empty) switch (lex.front.type)
+	{
 	case Type.header:
-		if (hasSum && hasDesc) {
+		if (hasSum && hasDesc)
+		{
 			assert(name !is null);
-			appendSection(name, lex.text[offset..end], app);
+			appendSection(name, lex.text[sliceStart .. sliceEnd], app);
 		}
-		if (!hasSum) {
+		else if (!hasSum)
+		{
 			hasSum = true;
-			app.data[0].content = lex.text[offset..end];
-			end = offset = lex.offset;
+			app.data[0].content = lex.text[sliceStart .. sliceEnd];
+			sliceEnd = sliceStart = lex.offset;
 		}
-		if (!hasDesc) {
+		else if (!hasDesc)
+		{
 			hasDesc = true;
-			app.data[1].content = lex.text[offset..end];
-			end = offset = lex.offset;
+			app.data[1].content = lex.text[sliceStart .. sliceEnd];
+			sliceEnd = sliceStart = lex.offset;
 		}
 		name = lex.front.text;
 		lex.popFront();
-		end = offset = lex.stripWhitespace();
+		sliceEnd = sliceStart = lex.stripWhitespace();
 		break;
 	case Type.newline:
 		lex.popFront();
-		if (!hasSum && lex.front.type == Type.newline) {
+		if (!hasSum && lex.front.type == Type.newline)
+		{
 			hasSum = true;
-			app.data[0].content = lex.text[offset..end];
-			end = offset = lex.offset;
+			app.data[0].content = lex.text[sliceStart .. sliceEnd];
+			sliceEnd = sliceStart = lex.offset;
 			lex.popFront();
 		}
 		break;
 	case Type.embedded:
 		// If examples are contiguous to each others
-		if (name != "Examples") {
-			string prev = lex.text[offset..end];
-			if (!hasSum) {
+		if (name != "Examples")
+		{
+			string prev = lex.text[sliceStart .. sliceEnd];
+			if (!hasSum)
+			{
 				app.data[0].content = prev;
-				hasSum = hasDesc = true;
-			} else if (!hasDesc) {
+				hasSum = true;
+			}
+			else if (!hasDesc)
+			{
 				hasDesc = true;
-				app.data[0].content = prev;
-			} else
+				app.data[1].content = prev;
+			}
+			else
 				appendSection(name, prev, app);
 			name = "Examples";
-			auto tmp = Lexer(lex.text[end .. $]);
-			offset = end + tmp.stripWhitespace();
-			end = lex.offset;
-		} else
-			end = lex.offset;
-
+			auto tmp = Lexer(lex.text[sliceEnd .. $]);
+			sliceStart = sliceEnd + tmp.stripWhitespace();
+			sliceEnd = lex.offset;
+		}
+		else
+			sliceEnd = lex.offset;
 		lex.popFront();
 		break;
 	default:
-		end = lex.offset;
+		sliceEnd = lex.offset;
 		lex.popFront();
 		break;
 	}
-
-	if (name !is null)
-		appendSection(name, lex.text[offset..end], app);
-
+	if (name!is null)
+		appendSection(name, lex.text[sliceStart .. sliceEnd], app);
 	return app.data;
 }
 
-unittest {
-	import std.format : text;
+unittest
+{
+	import std.conv : text;
 
 	auto s1 = `Short comment.
 Still comment.
@@ -217,19 +219,18 @@ Version:
 
 
 `;
-	auto cnt =
-		[ "Short comment.\nStill comment.",
-		  "Description.\nStill desc...\n\nStill",
-		  "Me & he", "None", "", "", "Nope,",
-		  "------\nvoid foo() {}\n----", "", "",
-		  "See_Also", "", "", "", "" ];
-	foreach (idx, sec; splitSections(s1)) {
-		if (idx < 2) // Summary & description
+	auto cnt = ["Short comment.\nStill comment.",
+		"Description.\nStill desc...\n\nStill", "Me & he", "None", "", "", "Nope,",
+		"------\nvoid foo() {}\n----", "", "", "See_Also", "", "", "", ""];
+	foreach (idx, sec; splitSections(s1))
+	{
+		if (idx < 2)
+			// Summary & description
 			assert(sec.name is null, sec.name);
 		else
-			assert(sec.name == STANDARD_SECTIONS[idx-2], sec.name);
-		assert(sec.content == cnt[idx],
-		       text(sec.name, " (", idx, "): ", sec.content));
+			assert(sec.name == STANDARD_SECTIONS[idx - 2], sec.name);
+		assert(sec.content == cnt[idx], text(sec.name, " (", idx, "): ",
+			sec.content));
 	}
 }
 
@@ -240,11 +241,17 @@ private:
 /// Returns:
 /// $(D true) if the section did not already exists,
 /// $(D false) if the content was merged with an existing section.
-bool appendSection(O)(string name, string content, ref O output) in {
-	assert(name !is null, "You should not call appendSection with a null name");
-} body {
-	for (size_t i = 2; i < output.data.length; ++i) {
-		if (output.data[i].name == name) {
+bool appendSection(O)(string name, string content, ref O output)
+in
+{
+	assert(name!is null, "You should not call appendSection with a null name");
+}
+body
+{
+	for (size_t i = 2; i < output.data.length; ++i)
+	{
+		if (output.data[i].name == name)
+		{
 			output.data[i].content ~= content;
 			return false;
 		}

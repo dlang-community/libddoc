@@ -12,7 +12,7 @@ Comment parseComment(string text, string[string] macros)
 {
 	import std.algorithm : find;
 	import ddoc.macros : expand;
-	import ddoc.highlight;
+	import ddoc.highlight : highlight;
 
 	auto sections = splitSections(text);
 	string[string] sMacros = macros;
@@ -47,7 +47,7 @@ struct Comment
 {
 	bool isDitto() const @property
 	{
-		import std.string;
+		import std.string : strip, toLower;
 		return sections.length == 1 && sections[0].content.strip().toLower() == "ditto";
 	}
 	Section[] sections;
@@ -55,7 +55,6 @@ struct Comment
 
 unittest
 {
-	import std.stdio;
 	auto macros = ["A": "<a href=\"$0\">"];
 	auto comment = `Best-comment-ever © 2014
 
@@ -77,7 +76,7 @@ Returns:
 //	writeln(c.sections.length);
 //	foreach (s; c.sections)
 //		writeln(s);
-	import std.string;
+	import std.string : format;
 //	writeln(c.sections);
 	assert(c.sections.length == 4, format("%d", c.sections.length));
 	assert(c.sections[0].name is null);
@@ -92,7 +91,6 @@ Returns:
 
 unittest
 {
-	import std.stdio;
 	auto comment = `---
 auto subcube(T...)(T values);
 ---
@@ -100,13 +98,11 @@ Creates a new cube in a similar way to whereCube, but allows the user to
 define a new root for specific dimensions.`c;
 	string[string] macros;
 	Comment c = parseComment(comment, macros);
-//	foreach (s; c.sections)
-//		writeln(s);
 }
 
 ///
 unittest {
-	import std.format : text;
+	import std.conv : text;
 	import ddoc.comments;
 
 	auto s1 = `Stop the world
