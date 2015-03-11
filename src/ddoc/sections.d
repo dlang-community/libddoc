@@ -109,11 +109,9 @@ Section[] splitSections(string text)
 	string name;
 	app ~= Section();
 	app ~= Section();
-	// Strip leading whitespace
-	//end = offset = lex.stripWhitespace();
-	while (!lex.empty) switch (lex.front.type)
+
+	void appendUnnamedSection()
 	{
-	case Type.header:
 		if (hasSum && hasDesc)
 		{
 			assert(name !is null);
@@ -131,6 +129,14 @@ Section[] splitSections(string text)
 			app.data[1].content = lex.text[sliceStart .. sliceEnd];
 			sliceEnd = sliceStart = lex.offset;
 		}
+	}
+
+	// Strip leading whitespace
+	//end = offset = lex.stripWhitespace();
+	while (!lex.empty) switch (lex.front.type)
+	{
+	case Type.header:
+		appendUnnamedSection();
 		name = lex.front.text;
 		lex.popFront();
 		sliceEnd = sliceStart = lex.stripWhitespace();
@@ -176,8 +182,10 @@ Section[] splitSections(string text)
 		lex.popFront();
 		break;
 	}
-	if (name!is null)
+	if (name !is null)
 		appendSection(name, lex.text[sliceStart .. sliceEnd], app);
+	else
+		appendUnnamedSection();
 	return app.data;
 }
 
