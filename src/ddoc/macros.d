@@ -235,6 +235,13 @@ unittest {
 	assert(r == exp, r);
 }
 
+unittest {
+	auto lex = Lexer(`$(DIV, Evil)`);
+	auto r = expand(lex, [ `DIV`: `<div $1>$+</div>`]);
+	auto exp = `<div >Evil</div>`;
+	assert(r == exp, r);
+}
+
 /**
  * Expand a macro, and write the result to an $(D OutputRange).
  *
@@ -459,7 +466,6 @@ void expandMacroImpl(O)(Lexer input, in string[string] macros, O output) {
 		output.put(lookup("BODY", macros));
 		return;
 	}
-	input.popFront();
 
 	// Collect the arguments
 	if (!input.empty && (input.front.type == Type.whitespace || input.front.type == Type.newline))
