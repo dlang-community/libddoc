@@ -133,6 +133,28 @@ $(D_CODE $(D_KEYWORD unittest) {
 	assert(r1 == e1, r1);
 }
 
+unittest {
+	auto s = `
+        ---------
+        asm pure nothrow @nogc @trusted
+        {
+            // the compiler does not check the attributes
+            ret;
+        }
+        ---------
+`;
+	auto e = `
+        $(D_CODE $(D_KEYWORD asm) $(D_KEYWORD pure) $(D_KEYWORD nothrow) @nogc @trusted
+{
+    $(D_COMMENT // the compiler does not check the attributes)
+    ret;
+}
+)
+`;
+	auto r = highlight(s);
+	assert (r == e, r);
+}
+
 private:
 void highlightCode(O)(string code, ref O output) {
 	import std.d.lexer;
