@@ -643,7 +643,7 @@ bool replaceArgs(O)(string val, in string[11] args, O output) {
 				assert(idx >= 0 && idx <= 9, text(idx));
 				// Missing argument
 				if (args[idx] is null)
-					return false;
+					continue;
 				output.put(args[idx]);
 				output.put(lex.front.text[1..$]);
 				lex.popFront();
