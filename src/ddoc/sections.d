@@ -12,9 +12,10 @@ import std.typecons;
 /**
  * Standard section names
  */
-immutable string[] STANDARD_SECTIONS = ["Authors", "Bugs", "Copyright", "Date",
-	"Deprecated", "Examples", "History", "License", "Returns", "See_Also",
-	"Standards", "Throws", "Version"];
+immutable string[] STANDARD_SECTIONS = [
+	"Authors", "Bugs", "Copyright", "Date", "Deprecated", "Examples", "History",
+	"License", "Returns", "See_Also", "Standards", "Throws", "Version"
+];
 /**
  *
  */
@@ -155,26 +156,10 @@ Section[] splitSections(string text)
 		// If examples are contiguous to each others
 		if (name != "Examples")
 		{
-			string prev = lex.text[sliceStart .. sliceEnd];
-			if (!hasSum)
-			{
-				app.data[0].content = prev;
-				hasSum = true;
-			}
-			else if (!hasDesc)
-			{
-				hasDesc = true;
-				app.data[1].content = prev;
-			}
-			else
-				appendSection(name, prev, app);
-			name = "Examples";
-			auto tmp = Lexer(lex.text[sliceEnd .. $]);
-			sliceStart = sliceEnd + tmp.stripWhitespace();
-			sliceEnd = lex.offset;
+			if (name is null)
+				name = "Examples";
 		}
-		else
-			sliceEnd = lex.offset;
+		sliceEnd = lex.offset;
 		lex.popFront();
 		break;
 	default:
@@ -186,6 +171,13 @@ Section[] splitSections(string text)
 		appendSection(name, lex.text[sliceStart .. sliceEnd], app);
 	else
 		appendUnnamedSection();
+	foreach (s; app.data)
+	{
+		import std.stdio : stderr;
+
+		stderr.writeln(s);
+	}
+
 	return app.data;
 }
 
@@ -227,18 +219,18 @@ Version:
 
 
 `;
-	auto cnt = ["Short comment.\nStill comment.",
-		"Description.\nStill desc...\n\nStill", "Me & he", "None", "", "", "Nope,",
-		"------\nvoid foo() {}\n----", "", "", "See_Also", "", "", "", ""];
+	auto cnt = [
+		"Short comment.\nStill comment.", "Description.\nStill desc...\n\nStill",
+		"Me & he", "None", "", "", "Nope,", "------\nvoid foo() {}\n----", "",
+		"", "See_Also", "", "", "", ""
+	];
 	foreach (idx, sec; splitSections(s1))
 	{
-		if (idx < 2)
-			// Summary & description
+		if (idx < 2)// Summary & description
 			assert(sec.name is null, sec.name);
 		else
 			assert(sec.name == STANDARD_SECTIONS[idx - 2], sec.name);
-		assert(sec.content == cnt[idx], text(sec.name, " (", idx, "): ",
-			sec.content));
+		assert(sec.content == cnt[idx], text(sec.name, " (", idx, "): ", sec.content));
 	}
 }
 
@@ -252,7 +244,7 @@ private:
 bool appendSection(O)(string name, string content, ref O output)
 in
 {
-	assert(name!is null, "You should not call appendSection with a null name");
+	assert(name !is null, "You should not call appendSection with a null name");
 }
 body
 {
