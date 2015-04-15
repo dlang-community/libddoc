@@ -642,12 +642,17 @@ bool replaceArgs(O)(string val, in string[11] args, O output) {
 				auto idx = lex.front.text[0] - '0';
 				assert(idx >= 0 && idx <= 9, text(idx));
 				// Missing argument
-				if (args[idx] is null)
+				if (args[idx] is null) {
+					lex.popFront();
 					continue;
+				}
 				output.put(args[idx]);
 				output.put(lex.front.text[1..$]);
 				lex.popFront();
 			} else if (lex.front.text == "+") {
+				if (args == string[11].init)
+					return false;
+
 				lex.popFront();
 				output.put(args[10]);
 			} else {
@@ -697,7 +702,14 @@ unittest {
 	args[1] = "Some";
 	args[2] = "kind";
 	args[10] = "kind";
-	assert(!replaceArgs("$(SOME $(MACRO $1 $2 $3))", args, a3));
+	assert(replaceArgs("$(SOME $(MACRO $1 $2 $3))", args, a3), a3.data);
+
+	auto a4 = appender!string;
+	args[] = null;
+	args[0] = "Some kind of test, I guess";
+	assert(replaceArgs("$(MACRO $0 $1)", args, a4));
+	assert(a4.data == "$(MACRO Some kind of test, I guess )",
+	       a4.data);
 }
 
 void replaceMacs(O)(string val, in string[string] macros, O output) {
