@@ -60,6 +60,9 @@ struct Lexer
 
 	void popFront()
 	{
+		import std.algorithm : startsWith;
+		import std.array : appender;
+
 		if (offset >= text.length)
 			_empty = true;
 		while (offset < text.length)
@@ -114,27 +117,55 @@ struct Lexer
 			offset++;
 			return;
 		case '-':
-			if (((offset > 0 && prevIsNewline(offset, text)) || offset == 0)
-				&& offset + 3 < text.length && text[offset .. offset + 3] == "---")
+			if (prevIsNewline(offset, text) && text[offset .. $].startsWith("---"))
 			{
 				current.type = Type.embedded;
+				// It's a string because user could mix spaces and tabs.
+				string indent = getIndent(offset, text);
 				// skip opening dashes
 				while (offset < text.length && text[offset] == '-')
 					offset++;
 				if (offset < text.length && text[offset] == '\r')
 					offset++;
-				if (offset < text.length && text[offset] == '\n')
+				if (offset < text.length && text[offset] == '\n') {
 					offset++;
+					if (text.length > (offset + indent.length)
+					    && text[offset .. offset + indent.length] == indent) {
+						offset += indent.length;
+					}
+				}
+				// Loops until we find the closing '---'.
+				// Note that some more checking should be put into this to avoid
+				// accidentally matching '---' sequences.
+				// If 'indent' is 0, then we can just take a slice. However, in
+				// most cases, there will be some indent, and we need to remove it
+				// for the code to look nice.
 				size_t sliceBegin = offset;
+				auto app = appender!string;
 				while (true)
 				{
 					if (offset >= text.length)
-						break;
-					if (text[offset] == '-' && offset > 0 && prevIsNewline(offset, text)
-						&& offset + 3 <= text.length
-						&& text[offset .. offset + 3] == "---")
+						throw new DdocException("Unterminated code block");
+					if (indent && text[offset] == '\n')
 					{
-						current.text = sliceBegin >= offset ? null : text[sliceBegin .. offset - 1];
+						app.put(text[sliceBegin .. ++offset]);
+						sliceBegin = offset;
+						// We need to check if the indentation is the same
+						if (text[sliceBegin .. $].startsWith(indent)) {
+							sliceBegin += indent.length;
+							offset += indent.length;
+						}
+					}
+					// Check for the end.
+					else if (text[offset] == '-' && prevIsNewline(offset, text)
+					    && text[offset .. $].startsWith("---"))
+					{
+						if (!indent)
+							current.text = sliceBegin >= offset ? null : text[sliceBegin .. offset - 1];
+						else {
+							app.put(sliceBegin >= offset ? null : text[sliceBegin .. offset - 1]);
+							current.text = app.data;
+						}
 						// skip closing dashes
 						while (offset < text.length && text[offset] == '-')
 							offset++;
@@ -298,4 +329,33 @@ bool prevIsNewline(size_t offset, immutable string text) pure nothrow
 	while (offset > 0 && (text[offset] == ' ' || text[offset] == '\t'))
 		offset--;
 	return text[offset] == '\n';
+}
+
+/// Return the indentation present before the given offset.
+/// offset should point past the indentation.
+/// e.g. : '\t\ttest' => Offset should be 2 (the index of 't'),
+///        and getIndent will return '\t\t'. If offset is 1,
+///        getIndent returns '\t'.
+string getIndent(size_t offset, string text) pure nothrow {
+	// There's no indentation before.
+	import std.stdio;
+	// If the offset is 0, or there's no indentation before.
+	if (offset < 1 || (text[offset - 1] != ' ' && text[offset - 1] != '\t'))
+		return null;
+
+	// At this point we already know that there's one level of indentation.
+	size_t indent = 1;
+	while (offset >= (indent + 1) // Avoid underflow
+	       && (text[offset - indent - 1] == ' '
+		   || text[offset - indent - 1] == '\t'))
+		indent++;
+	return text[offset - indent .. offset];
+}
+
+unittest {
+	assert(" " == getIndent(1, "  test"));
+	assert("  " == getIndent(2, "  test"));
+	assert(!getIndent(3, "  test"));
+	assert("\t \t" == getIndent(3, "\t \ttest"));
+	assert("\t  " == getIndent(4, "\n\t  test"));
 }
