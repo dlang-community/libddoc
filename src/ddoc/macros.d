@@ -373,7 +373,7 @@ unittest {
 string[string] parseMacrosFile(R)(R paths) if (isInputRange!(R)) {
 	import std.exception : enforceEx;
 	import std.file : readText;
-	import std.format : text;
+	import std.conv : text;
 
 	string[string] ret;
 	foreach (file; paths) {
