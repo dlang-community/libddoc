@@ -80,7 +80,7 @@ struct Lexer
 			{
 				current.text = text[offset .. inlineCode];
 				current.type = Type.inlined;
-				offset = inlineCode;
+				offset = inlineCode + 1;
 			}
 			return;
 		case ',':
