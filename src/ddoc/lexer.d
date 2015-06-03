@@ -126,10 +126,12 @@ struct Lexer
 					offset++;
 				if (offset < text.length && text[offset] == '\r')
 					offset++;
-				if (offset < text.length && text[offset] == '\n') {
+				if (offset < text.length && text[offset] == '\n')
+				{
 					offset++;
 					if (text.length > (offset + indent.length)
-					    && text[offset .. offset + indent.length] == indent) {
+					    	&& text[offset .. offset + indent.length] == indent)
+					{
 						offset += indent.length;
 					}
 				}
@@ -143,14 +145,16 @@ struct Lexer
 				auto app = appender!string;
 				while (true)
 				{
+					import std.conv:to;
 					if (offset >= text.length)
-						throw new DdocException("Unterminated code block");
+						throw new DdocException("Unterminated code block\n" ~ text);
 					if (indent && text[offset] == '\n')
 					{
 						app.put(text[sliceBegin .. ++offset]);
 						sliceBegin = offset;
 						// We need to check if the indentation is the same
-						if (text[sliceBegin .. $].startsWith(indent)) {
+						if (text[sliceBegin .. $].startsWith(indent))
+						{
 							sliceBegin += indent.length;
 							offset += indent.length;
 						}
@@ -159,9 +163,10 @@ struct Lexer
 					else if (text[offset] == '-' && prevIsNewline(offset, text)
 					    && text[offset .. $].startsWith("---"))
 					{
-						if (!indent)
+						if (indent.length == 0)
 							current.text = sliceBegin >= offset ? null : text[sliceBegin .. offset - 1];
-						else {
+						else
+						{
 							app.put(sliceBegin >= offset ? null : text[sliceBegin .. offset - 1]);
 							current.text = app.data;
 						}
@@ -294,22 +299,21 @@ Returns:
  */
 class DdocException : Exception
 {
-nothrow pure @safe:
 	this(string msg, string file = __FILE__, size_t line = __LINE__,
-		Throwable next = null)
+		Throwable next = null) nothrow pure @safe
 	{
 		super(msg, file, line, next);
 	}
 
 	// Allow method chaining:
 	// throw new DdocException().snippet(lexer.text);
-	@property DdocException snippet(string s)
+	@property DdocException snippet(string s) nothrow pure @safe @nogc
 	{
 		m_snippet = s;
 		return this;
 	}
 
-	@property string snippet() const
+	@property string snippet() const nothrow pure @safe @nogc
 	{
 		return m_snippet;
 	}
@@ -319,9 +323,8 @@ nothrow pure @safe:
 
 class DdocParseException : DdocException
 {
-nothrow pure @safe:
 	this(string msg, string code, string file = __FILE__, size_t line = __LINE__,
-		Throwable next = null)
+		Throwable next = null) nothrow pure @safe
 	{
 		super(msg, file, line, next);
 		this.snippet = code;
@@ -343,9 +346,8 @@ bool prevIsNewline(size_t offset, immutable string text) pure nothrow
 /// e.g. : '\t\ttest' => Offset should be 2 (the index of 't'),
 ///        and getIndent will return '\t\t'. If offset is 1,
 ///        getIndent returns '\t'.
-string getIndent(size_t offset, string text) pure nothrow {
-	// There's no indentation before.
-	import std.stdio;
+string getIndent(size_t offset, string text) pure nothrow
+{
 	// If the offset is 0, or there's no indentation before.
 	if (offset < 1 || (text[offset - 1] != ' ' && text[offset - 1] != '\t'))
 		return null;
@@ -359,7 +361,8 @@ string getIndent(size_t offset, string text) pure nothrow {
 	return text[offset - indent .. offset];
 }
 
-unittest {
+unittest
+{
 	assert(" " == getIndent(1, "  test"));
 	assert("  " == getIndent(2, "  test"));
 	assert(!getIndent(3, "  test"));
