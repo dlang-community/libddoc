@@ -104,7 +104,7 @@ Section[] splitSections(string text)
 	auto lex = Lexer(text);
 	auto app = appender!(Section[]);
 	bool hasSum, hasDesc;
-	// Used to strip trailing newlines / whitespaces.
+	// Used to strip trailing newlines / whitespace.
 	size_t sliceStart, sliceEnd;
 	string name;
 	app ~= Section();
@@ -131,8 +131,6 @@ Section[] splitSections(string text)
 		}
 	}
 
-	// Strip leading whitespace
-	//end = offset = lex.stripWhitespace();
 	while (!lex.empty) switch (lex.front.type)
 	{
 	case Type.header:
@@ -191,6 +189,35 @@ Section[] splitSections(string text)
 
 unittest
 {
+	import std.conv:text;
+	import std.stdio:stderr;
+
+	auto s = `description
+
+Something else
+
+---
+// an example
+---
+Throws: a fit
+---
+/// another example
+---
+`;
+	const sections = splitSections(s);
+	immutable expectedExample = `---
+// an example
+---
+---
+/// another example
+---`;
+	assert(sections.length == 4, text(sections.length));
+	assert(sections[2].content == expectedExample);
+
+}
+
+unittest
+{
 	import std.conv : text;
 
 	auto s1 = `Short comment.
@@ -243,12 +270,15 @@ Version:
 }
 
 private:
-/// Append a section to the given output or merge it if a section with
-/// the same name already exists.
-///
-/// Returns:
-/// $(D true) if the section did not already exists,
-/// $(D false) if the content was merged with an existing section.
+/**
+ * Append a section to the given output or merge it if a section with
+ *
+ * the same name already exists.
+ *
+ * Returns:
+ * $(D true) if the section did not already exists,
+ * $(D false) if the content was merged with an existing section.
+ */
 bool appendSection(O)(string name, string content, ref O output)
 in
 {
@@ -260,7 +290,7 @@ body
 	{
 		if (output.data[i].name == name)
 		{
-			output.data[i].content ~= content;
+			output.data[i].content ~= "\n" ~ content;
 			return false;
 		}
 	}
