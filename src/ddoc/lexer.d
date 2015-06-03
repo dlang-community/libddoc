@@ -65,11 +65,10 @@ struct Lexer
 
 		if (offset >= text.length)
 			_empty = true;
-		while (offset < text.length)
-			switch (text[offset])
-			{
-			case '`':
-				offset++;
+		while (offset < text.length) switch (text[offset])
+		{
+		case '`':
+			offset++;
 			immutable size_t inlineCode = inlineCodeIndex();
 			if (inlineCode == size_t.max)
 			{
@@ -255,6 +254,7 @@ struct Lexer
 unittest
 {
 	import std.algorithm : map, equal;
+	import std.array:array;
 
 	auto expected = [Type.whitespace, Type.dollar, Type.lParen, Type.word,
 		Type.whitespace, Type.word, Type.comma, Type.whitespace, Type.word,
@@ -277,6 +277,13 @@ Returns:
 	//	foreach (t; l)
 	//		writeln(t);
 	assert(equal(l.map!(a => a.type), expected));
+
+	auto expectedTexts2 = ["inlined code", " ", "identifier"];
+	auto expectedTypes2 = [Type.inlined, Type.whitespace, Type.word];
+	Lexer l2 = Lexer("`inlined code` identifier");
+	auto tokens = l2.array();
+	assert (equal(tokens.map!(a => a.type), expectedTypes2));
+	assert (equal(tokens.map!(a => a.text), expectedTexts2));
 }
 
 /**
