@@ -48,7 +48,7 @@ struct Comment
 	bool isDitto() const @property
 	{
 		import std.string : strip, toLower;
-		return sections.length == 1 && sections[0].content.strip().toLower() == "ditto";
+		return sections.length == 2 && sections[0].content.strip().toLower() == "ditto";
 	}
 	Section[] sections;
 }
