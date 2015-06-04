@@ -32,14 +32,15 @@
 module ddoc.macros;
 
 ///
-unittest {
+unittest
+{
 	import std.conv : text;
-	import ddoc.lexer;
+	import ddoc.lexer : Lexer;
 
 	// Ddoc has some hardwired macros, which will be automatically searched.
 	// List here: dlang.org/ddoc.html
 	auto l1 = Lexer(`A simple $(B Hello $(I world))`);
-	auto r1 = expand(l1, null);
+	const r1 = expand(l1, null);
 	assert(r1 == `A simple <b>Hello <i>world</i></b>`, r1);
 
 	// Example on how to parse ddoc file / macros sections.
@@ -64,14 +65,14 @@ unittest {
 	// expandMacro which expects the lexer to be placed on a macro, and
 	// will consume the input (unlike expand, which exhaust a copy).
 	auto l2 = Lexer(`$(GREETINGS $(IDENTITY John Doe))`);
-	auto r2 = expand(l2, m2);
+	const r2 = expand(l2, m2);
 	assert(r2 == `Hello <b>John Doe</b>`, r2);
 
 	// Note that the expansions are not processed recursively.
 	// Hence, it's possible to have DDOC-formatted code inside DDOC.
 	auto l3 = Lexer(`This $(DOLLAR)(MACRO) do not expand recursively.`);
-	auto r3 = expand(l3, null);
-	auto e3 = `This $(MACRO) do not expand recursively.`;
+	const r3 = expand(l3, null);
+	const e3 = `This $(MACRO) do not expand recursively.`;
 	assert(e3 == r3, r3);
 }
 
@@ -89,46 +90,25 @@ immutable string[string] DEFAULT_MACROS;
 
 shared static this()
 {
-	DEFAULT_MACROS =
-		[
-		 `B`: `<b>$0</b>`,
-		 `I`: `<i>$0</i>`,
-		 `U`: `<u>$0</u>`,
-		 `P` : `<p>$0</p>`,
-		 `DL` : `<dl>$0</dl>`,
-		 `DT` : `<dt>$0</dt>`,
-		 `DD` : `<dd>$0</dd>`,
-		 `TABLE` : `<table>$0</table>`,
-		 `TR` : `<tr>$0</tr>`,
-		 `TH` : `<th>$0</th>`,
-		 `TD` : `<td>$0</td>`,
-		 `OL` : `<ol>$0</ol>`,
-		 `UL` : `<ul>$0</ul>`,
-		 `LI` : `<li>$0</li>`,
-		 `LINK` : `<a href="$0">$0</a>`,
-		 `LINK2` : `<a href="$1">$+</a>`,
-		 `LPAREN` : `(`,
-		 `RPAREN` : `)`,
-		 `DOLLAR` : `$`,
-		 `BACKTICK` : "`",
-		 `DEPRECATED` : `$0`,
+	DEFAULT_MACROS = [`B` : `<b>$0</b>`, `I` : `<i>$0</i>`, `U` : `<u>$0</u>`,
+		`P` : `<p>$0</p>`, `DL` : `<dl>$0</dl>`, `DT` : `<dt>$0</dt>`,
+		`DD` : `<dd>$0</dd>`, `TABLE` : `<table>$0</table>`, `TR` : `<tr>$0</tr>`,
+		`TH` : `<th>$0</th>`, `TD` : `<td>$0</td>`, `OL` : `<ol>$0</ol>`,
+		`UL` : `<ul>$0</ul>`, `LI` : `<li>$0</li>`,
+		`LINK` : `<a href="$0">$0</a>`, `LINK2` : `<a href="$1">$+</a>`,
+		`LPAREN` : `(`, `RPAREN` : `)`, `DOLLAR` : `$`, `BACKTICK` : "`",
+		`DEPRECATED` : `$0`, `RED` : `<font color=red>$0</font>`,
+		`BLUE` : `<font color=blue>$0</font>`,
+		`GREEN` : `<font color=green>$0</font>`,
+		`YELLOW` : `<font color=yellow>$0</font>`,
+		`BLACK` : `<font color=black>$0</font>`,
+		`WHITE` : `<font color=white>$0</font>`,
 
-		 `RED` :   `<font color=red>$0</font>`,
-		 `BLUE` :  `<font color=blue>$0</font>`,
-		 `GREEN` : `<font color=green>$0</font>`,
-		 `YELLOW` : `<font color=yellow>$0</font>`,
-		 `BLACK` : `<font color=black>$0</font>`,
-		 `WHITE` : `<font color=white>$0</font>`,
-
-		 `D_CODE` : `<pre class="d_code">$0</pre>`,
-		 `D_INLINECODE` : `<pre style="display:inline;" class="d_inline_code">$0</pre>`,
-		 `D_COMMENT` : `$(GREEN $0)`,
-		 `D_STRING`  : `$(RED $0)`,
-		 `D_KEYWORD` : `$(BLUE $0)`,
-		 `D_PSYMBOL` : `$(U $0)`,
-		 `D_PARAM` : `$(I $0)`,
-
-		 `DDOC` : `<html>
+		`D_CODE` : `<pre class="d_code">$0</pre>`,
+		`D_INLINECODE` : `<pre style="display:inline;" class="d_inline_code">$0</pre>`,
+		`D_COMMENT` : `$(GREEN $0)`, `D_STRING` : `$(RED $0)`,
+		`D_KEYWORD` : `$(BLUE $0)`, `D_PSYMBOL` : `$(U $0)`,
+		`D_PARAM` : `$(I $0)`, `DDOC` : `<html>
   <head>
     <META http-equiv="content-type" content="text/html; charset=utf-8">
     <title>$(TITLE)</title>
@@ -140,52 +120,40 @@ shared static this()
   </body>
 </html>`,
 
-		 `DDOC_BACKQUOTED` : `$(D_INLINECODE $0)`,
-		 `DDOC_COMMENT` : `<!-- $0 -->`,
-		 `DDOC_DECL` : `$(DT $(BIG $0))`,
-		 `DDOC_DECL_DD` : `$(DD $0)`,
-		 `DDOC_DITTO` : `$(BR)$0`,
-		 `DDOC_SECTIONS` : `$0`,
-		 `DDOC_SUMMARY` : `$0$(BR)$(BR)`,
-		 `DDOC_DESCRIPTION` : `$0$(BR)$(BR)`,
-		 `DDOC_AUTHORS` : "$(B Authors:)$(BR)\n$0$(BR)$(BR)",
-		 `DDOC_BUGS` : "$(RED BUGS:)$(BR)\n$0$(BR)$(BR)",
-		 `DDOC_COPYRIGHT` : "$(B Copyright:)$(BR)\n$0$(BR)$(BR)",
-		 `DDOC_DATE` : "$(B Date:)$(BR)\n$0$(BR)$(BR)",
-		 `DDOC_DEPRECATED` : "$(RED Deprecated:)$(BR)\n$0$(BR)$(BR)",
-		 `DDOC_EXAMPLES` : "$(B Examples:)$(BR)\n$0$(BR)$(BR)",
-		 `DDOC_HISTORY` : "$(B History:)$(BR)\n$0$(BR)$(BR)",
-		 `DDOC_LICENSE` : "$(B License:)$(BR)\n$0$(BR)$(BR)",
-		 `DDOC_RETURNS` : "$(B Returns:)$(BR)\n$0$(BR)$(BR)",
-		 `DDOC_SEE_ALSO` : "$(B See Also:)$(BR)\n$0$(BR)$(BR)",
-		 `DDOC_STANDARDS` : "$(B Standards:)$(BR)\n$0$(BR)$(BR)",
-		 `DDOC_THROWS` : "$(B Throws:)$(BR)\n$0$(BR)$(BR)",
-		 `DDOC_VERSION` : "$(B Version:)$(BR)\n$0$(BR)$(BR)",
-		 `DDOC_SECTION_H` : `$(B $0)$(BR)$(BR)`,
-		 `DDOC_SECTION` : `$0$(BR)$(BR)`,
-		 `DDOC_MEMBERS` : `$(DL $0)`,
-		 `DDOC_MODULE_MEMBERS` : `$(DDOC_MEMBERS $0)`,
-		 `DDOC_CLASS_MEMBERS` : `$(DDOC_MEMBERS $0)`,
-		 `DDOC_STRUCT_MEMBERS` : `$(DDOC_MEMBERS $0)`,
-		 `DDOC_ENUM_MEMBERS` : `$(DDOC_MEMBERS $0)`,
-		 `DDOC_TEMPLATE_MEMBERS` : `$(DDOC_MEMBERS $0)`,
-		 `DDOC_ENUM_BASETYPE` : `$0`,
-		 `DDOC_PARAMS` : "$(B Params:)$(BR)\n$(TABLE $0)$(BR)",
-		 `DDOC_PARAM_ROW` : `$(TR $0)`,
-		 `DDOC_PARAM_ID` : `$(TD $0)`,
-		 `DDOC_PARAM_DESC` : `$(TD $0)`,
-		 `DDOC_BLANKLINE` : `$(BR)$(BR)`,
+		`DDOC_BACKQUOTED` : `$(D_INLINECODE $0)`, `DDOC_COMMENT` : `<!-- $0 -->`,
+		`DDOC_DECL` : `$(DT $(BIG $0))`, `DDOC_DECL_DD` : `$(DD $0)`,
+		`DDOC_DITTO` : `$(BR)$0`, `DDOC_SECTIONS` : `$0`,
+		`DDOC_SUMMARY` : `$0$(BR)$(BR)`, `DDOC_DESCRIPTION` : `$0$(BR)$(BR)`,
+		`DDOC_AUTHORS` : "$(B Authors:)$(BR)\n$0$(BR)$(BR)",
+		`DDOC_BUGS` : "$(RED BUGS:)$(BR)\n$0$(BR)$(BR)",
+		`DDOC_COPYRIGHT` : "$(B Copyright:)$(BR)\n$0$(BR)$(BR)",
+		`DDOC_DATE` : "$(B Date:)$(BR)\n$0$(BR)$(BR)",
+		`DDOC_DEPRECATED` : "$(RED Deprecated:)$(BR)\n$0$(BR)$(BR)",
+		`DDOC_EXAMPLES` : "$(B Examples:)$(BR)\n$0$(BR)$(BR)",
+		`DDOC_HISTORY` : "$(B History:)$(BR)\n$0$(BR)$(BR)",
+		`DDOC_LICENSE` : "$(B License:)$(BR)\n$0$(BR)$(BR)",
+		`DDOC_RETURNS` : "$(B Returns:)$(BR)\n$0$(BR)$(BR)",
+		`DDOC_SEE_ALSO` : "$(B See Also:)$(BR)\n$0$(BR)$(BR)",
+		`DDOC_STANDARDS` : "$(B Standards:)$(BR)\n$0$(BR)$(BR)",
+		`DDOC_THROWS` : "$(B Throws:)$(BR)\n$0$(BR)$(BR)",
+		`DDOC_VERSION` : "$(B Version:)$(BR)\n$0$(BR)$(BR)",
+		`DDOC_SECTION_H` : `$(B $0)$(BR)$(BR)`, `DDOC_SECTION` : `$0$(BR)$(BR)`,
+		`DDOC_MEMBERS` : `$(DL $0)`,
+		`DDOC_MODULE_MEMBERS` : `$(DDOC_MEMBERS $0)`,
+		`DDOC_CLASS_MEMBERS` : `$(DDOC_MEMBERS $0)`,
+		`DDOC_STRUCT_MEMBERS` : `$(DDOC_MEMBERS $0)`,
+		`DDOC_ENUM_MEMBERS` : `$(DDOC_MEMBERS $0)`,
+		`DDOC_TEMPLATE_MEMBERS` : `$(DDOC_MEMBERS $0)`,
+		`DDOC_ENUM_BASETYPE` : `$0`,
+		`DDOC_PARAMS` : "$(B Params:)$(BR)\n$(TABLE $0)$(BR)",
+		`DDOC_PARAM_ROW` : `$(TR $0)`, `DDOC_PARAM_ID` : `$(TD $0)`,
+		`DDOC_PARAM_DESC` : `$(TD $0)`, `DDOC_BLANKLINE` : `$(BR)$(BR)`,
 
-		 `DDOC_ANCHOR` : `<a name="$1"></a>`,
-		 `DDOC_PSYMBOL` : `$(U $0)`,
-		 `DDOC_PSUPER_SYMBOL` : `$(U $0)`,
-		 `DDOC_KEYWORD` : `$(B $0)`,
-		 `DDOC_PARAM` : `$(I $0)`,
-
-		 `ESCAPES` : `/</&lt;/
+		`DDOC_ANCHOR` : `<a name="$1"></a>`, `DDOC_PSYMBOL` : `$(U $0)`,
+		`DDOC_PSUPER_SYMBOL` : `$(U $0)`, `DDOC_KEYWORD` : `$(B $0)`,
+		`DDOC_PARAM` : `$(I $0)`, `ESCAPES` : `/</&lt;/
 />/&gt;/
-&/&amp;/`,
-		 ];
+&/&amp;/`,];
 }
 
 /**
@@ -201,43 +169,55 @@ shared static this()
  *		To undefine hardwired macros, just set them to an empty string: $(D macros["B"] = "";).
  * output = An object satisfying $(D std.range.isOutputRange), usually a $(D std.array.Appender).
  */
-void expand(O)(Lexer input, in string[string] macros, O output) if (isOutputRange!(O, string)) {
+void expand(O)(Lexer input, in string[string] macros, O output) if (isOutputRange!(O,
+		string))
+{
 	// First, we need to turn every embedded code into a $(D_CODE)
-	while (!input.empty) {
+	while (!input.empty)
+	{
 		assert(input.front.type != Type.embedded, callHighlightMsg);
-		if (input.front.type == Type.dollar) {
+		if (input.front.type == Type.dollar)
+		{
 			input.popFront();
-			if (input.front.type == Type.lParen) {
+			if (input.front.type == Type.lParen)
+			{
 				auto mac = Lexer(matchParenthesis(input), true);
 				if (!mac.empty)
 					expandMacroImpl(mac, macros, output);
-			} else
+			}
+			else
 				output.put("$");
-		} else {
+		}
+		else
+		{
 			output.put(input.front.text);
 			input.popFront();
 		}
 	}
- }
+}
 
 /// Ditto
-string expand(Lexer input, string[string] macros) {
+string expand(Lexer input, string[string] macros)
+{
 	import std.array : appender;
+
 	auto app = appender!string();
 	expand(input, macros, app);
 	return app.data;
 }
 
-unittest {
+unittest
+{
 	auto lex = Lexer(`Dat logo: $(LOGO dlang, Beautiful dlang logo)`);
-	auto r = expand(lex, [ `LOGO` : `<img src="images/$1_logo.png" alt="$2">`]);
+	auto r = expand(lex, [`LOGO` : `<img src="images/$1_logo.png" alt="$2">`]);
 	auto exp = `Dat logo: <img src="images/dlang_logo.png" alt="Beautiful dlang logo">`;
 	assert(r == exp, r);
 }
 
-unittest {
+unittest
+{
 	auto lex = Lexer(`$(DIV, Evil)`);
-	auto r = expand(lex, [ `DIV`: `<div $1>$+</div>`]);
+	auto r = expand(lex, [`DIV` : `<div $1>$+</div>`]);
 	auto exp = `<div >Evil</div>`;
 	assert(r == exp, r);
 }
@@ -257,12 +237,17 @@ unittest {
  * macros = Additional macros to use, in addition of DDOC's ones.
  * output = An $(D OutputRange) to write to.
  */
-void expandMacro(O)(ref Lexer input, in string[string] macros, O output) if (isOutputRange!(O, string)) in {
-		import std.conv : text;
-		assert(input.front.type == Type.dollar
-		       || input.front.type == Type.lParen,
-		       text("$ or ( expected, not ", input.front.type));
-} body {
+void expandMacro(O)(ref Lexer input, in string[string] macros, O output) if (
+		isOutputRange!(O, string))
+	in
+{
+	import std.conv : text;
+
+	assert(input.front.type == Type.dollar || input.front.type == Type.lParen,
+		text("$ or ( expected, not ", input.front.type));
+}
+body
+{
 	import std.conv : text;
 
 	if (input.front.type == Type.dollar)
@@ -270,33 +255,36 @@ void expandMacro(O)(ref Lexer input, in string[string] macros, O output) if (isO
 	assert(input.front.type == Type.lParen, text(input.front.type));
 	auto l = Lexer(matchParenthesis(input), true);
 	expandMacroImpl(l, macros, output);
- }
+}
 
 /// Ditto
-string expandMacro(ref Lexer input, in string[string] macros) in {
+string expandMacro(ref Lexer input, in string[string] macros)
+in
+{
 	import std.conv : text;
-	assert(input.front.type == Type.dollar
-	       || input.front.type == Type.lParen,
-	       text("$ or ( expected, not ", input.front.type));
-} body {
+
+	assert(input.front.type == Type.dollar || input.front.type == Type.lParen,
+		text("$ or ( expected, not ", input.front.type));
+}
+body
+{
 	import std.array : appender;
+
 	auto app = appender!string();
 	expandMacro(input, macros, app);
 	return app.data;
 }
 
 ///
-unittest {
+unittest
+{
 	import ddoc.lexer;
 	import std.array : appender;
 
-	auto macros =
-		[
-		 "IDENTITY": "$0",
-		 "HWORLD": "$(IDENTITY Hello world!)",
-		 "ARGS": "$(IDENTITY $1 $+)",
-		 "GREETINGS": "$(IDENTITY $(ARGS Hello,$0))",
-		 ];
+	auto macros = [
+		"IDENTITY" : "$0", "HWORLD" : "$(IDENTITY Hello world!)",
+		"ARGS" : "$(IDENTITY $1 $+)", "GREETINGS" : "$(IDENTITY $(ARGS Hello,$0))",
+	];
 
 	auto l1 = Lexer(`$(HWORLD)`);
 	auto r1 = expandMacro(l1, macros);
@@ -313,34 +301,35 @@ unittest {
 }
 
 /// A simple example, with recursive macros:
-unittest {
+unittest
+{
 	import ddoc.lexer;
 
 	auto lex = Lexer(`$(MYTEST Un,jour,mon,prince,viendra)`);
-	auto macros = [ `MYTEST`: `$1 $(MYTEST $+)` ];
+	auto macros = [`MYTEST` : `$1 $(MYTEST $+)`];
 	// Note: There's also a version of expand that takes an OutputRange.
 	auto result = expand(lex, macros);
 	assert(result == `Un jour mon prince viendra `, result);
 }
 
-unittest {
+unittest
+{
 	import std.array;
-	auto macros =
-		[
-		 "D" : "<b>$0</b>",
-		 "P" : "<p>$(D $0)</p>",
-		 "KP" : "<b>$1</b><i>$+</i>",
-		 "LREF" : `<a href="#$1">$(D $1)</a>`
-		 ];
+
+	auto macros = [
+		"D" : "<b>$0</b>", "P" : "<p>$(D $0)</p>", "KP" : "<b>$1</b><i>$+</i>",
+		"LREF" : `<a href="#$1">$(D $1)</a>`
+	];
 	auto l = Lexer(`$(D something $(KP a, b) $(P else), abcd) $(LREF byLineAsync)`c);
 	auto expected = `<b>something <b>a</b><i>b</i> <p><b>else</b></p>, abcd</b> <a href="#byLineAsync"><b>byLineAsync</b></a>`;
 	auto result = appender!string();
 	expand(l, macros, result);
-	assert (result.data == expected, result.data);
+	assert(result.data == expected, result.data);
 	// writeln(result.data);
 }
 
-unittest {
+unittest
+{
 	auto l1 = Lexer("Do you have a $(RPAREN) problem with $(LPAREN) me?");
 	auto r1 = expand(l1, null);
 	assert(r1 == "Do you have a ) problem with ( me?", r1);
@@ -350,7 +339,7 @@ unittest {
 	assert(r2 == "And (with ( me) ?", r2);
 
 	auto l3 = Lexer("What about $(TEST me) ?");
-	auto r3 = expand(l3, [ "TEST": "($0" ]);
+	auto r3 = expand(l3, ["TEST" : "($0"]);
 	assert(r3 == "What about (me ?", r3);
 }
 
@@ -370,18 +359,21 @@ unittest {
  * An associative array containing all the macros parsed from the files.
  * In case of multiple definitions, macros are overriden.
  */
-string[string] parseMacrosFile(R)(R paths) if (isInputRange!(R)) {
+string[string] parseMacrosFile(R)(R paths) if (isInputRange!(R))
+{
 	import std.exception : enforceEx;
 	import std.file : readText;
 	import std.conv : text;
 
 	string[string] ret;
-	foreach (file; paths) {
+	foreach (file; paths)
+	{
 		KeyValuePair[] pairs;
 		auto txt = readText(file);
 		auto lexer = Lexer(txt, true);
 		parseKeyValuePair(lexer, pairs);
-		enforceEx!DdocException(lexer.empty, text("Unparsed data (", lexer.offset, "): ", lexer.text[lexer.offset..$]));
+		enforceEx!DdocException(lexer.empty, text("Unparsed data (",
+			lexer.offset, "): ", lexer.text[lexer.offset .. $]));
 		foreach (kv; pairs)
 			ret[kv[0]] = kv[1];
 	}
@@ -402,27 +394,34 @@ string[string] parseMacrosFile(R)(R paths) if (isInputRange!(R)) {
  *
  * Returns: true if the parsing succeeded.
  */
-bool parseKeyValuePair(ref Lexer lexer, ref KeyValuePair[] pairs) {
+bool parseKeyValuePair(ref Lexer lexer, ref KeyValuePair[] pairs)
+{
 	import std.array : appender;
 	import std.conv : text;
+
 	string prevKey, key;
 	string prevValue, value;
-	while (!lexer.empty) {
+	while (!lexer.empty)
+	{
 		// If parseAsKeyValuePair returns true, we stopped on a newline.
 		// If it returns false, we're either on a section (header),
 		// or the continuation of a macro.
-		if (!parseAsKeyValuePair(lexer, key, value)) {
+		if (!parseAsKeyValuePair(lexer, key, value))
+		{
 			if (prevKey == null) // First pass and invalid data
 				return false;
 			if (lexer.front.type == Type.header)
 				break;
 			assert(lexer.offset >= prevValue.length);
-			size_t start = tokOffset(lexer)	- prevValue.length;
-			while (!lexer.empty && lexer.front.type != Type.newline) {
+			size_t start = tokOffset(lexer) - prevValue.length;
+			while (!lexer.empty && lexer.front.type != Type.newline)
+			{
 				lexer.popFront();
 			}
-			prevValue = lexer.text[start..lexer.offset];
-		} else {
+			prevValue = lexer.text[start .. lexer.offset];
+		}
+		else
+		{
 			// New macro, we can save the previous one.
 			// The only case when key would not be defined is on first pass.
 			if (prevKey)
@@ -431,9 +430,10 @@ bool parseKeyValuePair(ref Lexer lexer, ref KeyValuePair[] pairs) {
 			prevValue = value;
 			key = value = null;
 		}
-		if (!lexer.empty) {
-			assert(lexer.front.type == Type.newline,
-			       text("Front: ", lexer.front.type, ", text: ", lexer.text[lexer.offset..$]));
+		if (!lexer.empty)
+		{
+			assert(lexer.front.type == Type.newline, text("Front: ",
+				lexer.front.type, ", text: ", lexer.text[lexer.offset .. $]));
 			lexer.popFront();
 		}
 	}
@@ -446,7 +446,8 @@ bool parseKeyValuePair(ref Lexer lexer, ref KeyValuePair[] pairs) {
 
 private:
 // upperArgs is a string[11] actually, or null.
-void expandMacroImpl(O)(Lexer input, in string[string] macros, O output) {
+void expandMacroImpl(O)(Lexer input, in string[string] macros, O output)
+{
 	import std.conv : text;
 
 	//debug writeln("Expanding: ", input.text);
@@ -457,12 +458,14 @@ void expandMacroImpl(O)(Lexer input, in string[string] macros, O output) {
 	//debug writeln("[EXPAND] Macro name: ", input.front.text);
 	string macroValue = lookup(macroName, macros);
 	// No point loosing time if the macro is undefined.
-	if (macroValue is null) return;
+	if (macroValue is null)
+		return;
 	//debug writeln("[EXPAND] Macro value: ", macroValue);
 	input.popFront();
 
 	// Special case for $(DDOC). It's ugly, but it gets the job done.
-	if (input.empty && macroName == "BODY") {
+	if (input.empty && macroName == "BODY")
+	{
 		output.put(lookup("BODY", macros));
 		return;
 	}
@@ -483,27 +486,30 @@ void expandMacroImpl(O)(Lexer input, in string[string] macros, O output) {
 	replaceMacs(argOutput.data, macros, output);
 }
 
-unittest {
+unittest
+{
 	auto a1 = appender!string();
 	expandMacroImpl(Lexer(`B value`), null, a1);
 	assert(a1.data == `<b>value</b>`, a1.data);
 
 	auto a2 = appender!string();
-	expandMacroImpl(Lexer(`IDENTITY $(B value)`), [ "IDENTITY": "$0" ], a2);
+	expandMacroImpl(Lexer(`IDENTITY $(B value)`), ["IDENTITY" : "$0"], a2);
 	assert(a2.data == `<b>value</b>`, a2.data);
 }
 
 // Try to parse a line as a KeyValuePair, returns false if it fails
-private bool parseAsKeyValuePair(ref Lexer olexer, ref string key, ref string value) {
+private bool parseAsKeyValuePair(ref Lexer olexer, ref string key, ref string value)
+{
 	string _key;
 	auto lexer = olexer;
-	while (!lexer.empty && (lexer.front.type == Type.whitespace
-				|| lexer.front.type == Type.newline))
+	while (!lexer.empty && (lexer.front.type == Type.whitespace || lexer.front.type == Type.newline))
 		lexer.popFront();
-	if (!lexer.empty && lexer.front.type == Type.word) {
+	if (!lexer.empty && lexer.front.type == Type.word)
+	{
 		_key = lexer.front.text;
 		lexer.popFront();
-	} else
+	}
+	else
 		return false;
 	while (!lexer.empty && lexer.front.type == Type.whitespace)
 		lexer.popFront();
@@ -516,29 +522,35 @@ private bool parseAsKeyValuePair(ref Lexer olexer, ref string key, ref string va
 	assert(lexer.offset > 0, "Something is wrong with the lexer");
 	// Offset points to the END of the token, not the beginning.
 	size_t start = tokOffset(lexer);
-	while (!lexer.empty && lexer.front.type != Type.newline) {
+	while (!lexer.empty && lexer.front.type != Type.newline)
+	{
 		assert(lexer.front.type != Type.header);
 		lexer.popFront();
 	}
 	olexer = lexer;
 	key = _key;
-	size_t end = lexer.offset - ((start != lexer.offset && lexer.offset != lexer.text.length) ? (1) : (0));
-	value = lexer.text[start..end];
+	size_t end = lexer.offset - ((start != lexer.offset
+		&& lexer.offset != lexer.text.length) ? (1) : (0));
+	value = lexer.text[start .. end];
 	return true;
 }
 
 // Note: For macro $(NAME arg1,arg2), collectMacroArguments receive "arg1,arg2".
-size_t collectMacroArguments(Lexer input, ref string[11] args) {
+size_t collectMacroArguments(Lexer input, ref string[11] args)
+{
 	import std.conv : text;
 
 	size_t argPos = 1;
 	size_t argStart = tokOffset(input);
 	args[] = null;
-	if (input.empty) return 0;
+	if (input.empty)
+		return 0;
 	args[0] = input.text[tokOffset(input) .. $];
-	while (!input.empty) {
+	while (!input.empty)
+	{
 		assert(input.front.type != Type.embedded, callHighlightMsg);
-		switch (input.front.type) {
+		switch (input.front.type)
+		{
 		case Type.comma:
 			if (argPos <= 9)
 				args[argPos++] = input.text[argStart .. (input.offset - 1)];
@@ -551,7 +563,7 @@ size_t collectMacroArguments(Lexer input, ref string[11] args) {
 			break;
 		case Type.lParen:
 			// Advance the lexer to the matching parenthesis.
-			auto err = input.text[input.offset..$];
+			auto err = input.text[input.offset .. $];
 			auto substr = matchParenthesis(input);
 			break;
 			// TODO: Implement ", ' and <-- pairing.
@@ -565,8 +577,10 @@ size_t collectMacroArguments(Lexer input, ref string[11] args) {
 	return argPos;
 }
 
-unittest {
+unittest
+{
 	import std.conv : text;
+
 	string[11] args;
 
 	auto l1 = Lexer(`Hello, world`);
@@ -612,50 +626,60 @@ unittest {
 		assert(args[i] is null, args[i]);
 
 	import std.string : split;
+
 	enum first = `I,am,happy,to,join,with,you,today,in,what,will,go,down,in,history,as,the,greatest,demonstration,for,freedom,in,the,history,of,our,nation.`;
 	auto l5 = Lexer(first);
 	auto c5 = collectMacroArguments(l5, args);
 	assert(c5 == 10, text(c5));
 	assert(args[0] == first, args[0]);
-	foreach (idx, word; first.split(",")[0..9])
-		assert(args[idx+1] == word, text(word , " != ", args[idx+1]));
-	assert(args[10] == first[2..$], args[10]);
+	foreach (idx, word; first.split(",")[0 .. 9])
+		assert(args[idx + 1] == word, text(word, " != ", args[idx + 1]));
+	assert(args[10] == first[2 .. $], args[10]);
 
 	// TODO: ", ', {, <--, matched and unmatched.
 }
 
 // Where the grunt work is done...
 
-bool replaceArgs(O)(string val, in string[11] args, O output) {
+bool replaceArgs(O)(string val, in string[11] args, O output)
+{
 	import std.conv : text;
 	import std.ascii : isDigit;
 
 	bool hasEnd;
 	auto lex = Lexer(val, true);
-	while (!lex.empty) {
+	while (!lex.empty)
+	{
 		assert(lex.front.type != Type.embedded, callHighlightMsg);
-		switch (lex.front.type) {
+		switch (lex.front.type)
+		{
 		case Type.dollar:
 			lex.popFront();
 			// It could be $1_test
-			if (isDigit(lex.front.text[0])) {
+			if (isDigit(lex.front.text[0]))
+			{
 				auto idx = lex.front.text[0] - '0';
 				assert(idx >= 0 && idx <= 9, text(idx));
 				// Missing argument
-				if (args[idx] is null) {
+				if (args[idx] is null)
+				{
 					lex.popFront();
 					continue;
 				}
 				output.put(args[idx]);
-				output.put(lex.front.text[1..$]);
+				output.put(lex.front.text[1 .. $]);
 				lex.popFront();
-			} else if (lex.front.text == "+") {
+			}
+			else if (lex.front.text == "+")
+			{
 				if (args == string[11].init)
 					return false;
 
 				lex.popFront();
 				output.put(args[10]);
-			} else {
+			}
+			else
+			{
 				output.put("$");
 			}
 			break;
@@ -674,7 +698,8 @@ bool replaceArgs(O)(string val, in string[11] args, O output) {
 	return true;
 }
 
-unittest {
+unittest
+{
 	string[11] args;
 
 	auto a1 = appender!string;
@@ -682,8 +707,7 @@ unittest {
 	args[1] = "Some kind of test";
 	args[2] = " I guess";
 	assert(replaceArgs("$(MY $(SUPER $(MACRO $0)))", args, a1));
-	assert(a1.data == "$(MY $(SUPER $(MACRO Some kind of test, I guess)))",
-	       a1.data);
+	assert(a1.data == "$(MY $(SUPER $(MACRO Some kind of test, I guess)))", a1.data);
 
 	auto a2 = appender!string;
 	args[] = null;
@@ -708,17 +732,19 @@ unittest {
 	args[] = null;
 	args[0] = "Some kind of test, I guess";
 	assert(replaceArgs("$(MACRO $0 $1)", args, a4));
-	assert(a4.data == "$(MACRO Some kind of test, I guess )",
-	       a4.data);
+	assert(a4.data == "$(MACRO Some kind of test, I guess )", a4.data);
 }
 
-void replaceMacs(O)(string val, in string[string] macros, O output) {
+void replaceMacs(O)(string val, in string[string] macros, O output)
+{
 	//debug writeln("[REPLACE] Arguments replaced: ", val);
 	bool hasEnd;
 	auto lex = Lexer(val, true);
-	while (!lex.empty) {
+	while (!lex.empty)
+	{
 		assert(lex.front.type != Type.embedded, callHighlightMsg);
-		switch (lex.front.type) {
+		switch (lex.front.type)
+		{
 		case Type.dollar:
 			lex.popFront();
 			if (lex.front.type == Type.lParen)
@@ -748,27 +774,37 @@ void replaceMacs(O)(string val, in string[string] macros, O output) {
  * taking nesting into account.
  * If no matching parenthesis is met, returns null (and $(D lexer) will be empty).
  */
-string matchParenthesis(ref Lexer lexer, bool* hasEnd = null) in {
+string matchParenthesis(ref Lexer lexer, bool* hasEnd = null)
+in
+{
 	import std.conv : text;
+
 	assert(lexer.front.type == Type.lParen, text(lexer.front));
 	assert(lexer.offset);
-} body {
+}
+body
+{
 	size_t count;
 	size_t start = lexer.offset;
-	do {
+	do
+	{
 		if (lexer.front.type == Type.rParen)
 			--count;
 		else if (lexer.front.type == Type.lParen)
 			++count;
 		lexer.popFront();
-	} while (count > 0 && !lexer.empty);
+	}
+	while (count > 0 && !lexer.empty);
 	size_t end = (lexer.empty) ? lexer.text.length : tokOffset(lexer);
-	if (hasEnd !is null) *hasEnd = (count == 0);
-	if (count == 0) end -= 1;
+	if (hasEnd !is null)
+		*hasEnd = (count == 0);
+	if (count == 0)
+		end -= 1;
 	return lexer.text[start .. end];
 }
 
-unittest {
+unittest
+{
 	auto l1 = Lexer(`(Hello) World`);
 	auto r1 = matchParenthesis(l1);
 	assert(r1 == "Hello", r1);
@@ -785,13 +821,15 @@ unittest {
 	assert(l3.empty);
 
 	auto l4 = Lexer(`W (He(l)lo)`);
-	l4.popFront(); l4.popFront();
+	l4.popFront();
+	l4.popFront();
 	auto r4 = matchParenthesis(l4);
 	assert(r4 == "He(l)lo", r4);
 	assert(l4.empty);
 
 	auto l5 = Lexer(` @(Hello())   ()`);
-	l5.popFront(); l5.popFront();
+	l5.popFront();
+	l5.popFront();
 	auto r5 = matchParenthesis(l5);
 	assert(r5 == "Hello()", r5);
 	assert(!l5.empty);
@@ -802,22 +840,29 @@ unittest {
 	assert(l6.empty);
 }
 
-package size_t tokOffset(in Lexer lex) { return lex.offset - lex.front.text.length; }
+package size_t tokOffset(in Lexer lex)
+{
+	return lex.offset - lex.front.text.length;
+}
 
-unittest {
+unittest
+{
 	import std.conv : text;
 
 	auto lex = Lexer(`My  (friend) $ lives abroad`);
 	auto expected = [0, 2, 4, 5, 11, 12, 13, 14, 15, 20, 21];
-	while (!lex.empty) {
+	while (!lex.empty)
+	{
 		assert(expected.length > 0, "Test and results are not in sync");
-		assert(tokOffset(lex) == expected[0], text(lex.front, " : ", tokOffset(lex), " -- ", expected[0]));
+		assert(tokOffset(lex) == expected[0], text(lex.front, " : ",
+			tokOffset(lex), " -- ", expected[0]));
 		lex.popFront();
-		expected = expected[1..$];
+		expected = expected[1 .. $];
 	}
 }
 
-string lookup(in string name, in string[string] macros, string defVal = null) {
+string lookup(in string name, in string[string] macros, string defVal = null)
+{
 	auto p = name in macros;
 	if (p is null)
 		return DEFAULT_MACROS.get(name, defVal);
@@ -825,9 +870,11 @@ string lookup(in string name, in string[string] macros, string defVal = null) {
 }
 
 /// Returns: The number of offset skipped.
-package size_t stripWhitespace(ref Lexer lexer) {
+package size_t stripWhitespace(ref Lexer lexer)
+{
 	size_t start = lexer.offset;
-	while (!lexer.empty && (lexer.front.type == Type.whitespace || lexer.front.type == Type.newline)) {
+	while (!lexer.empty && (lexer.front.type == Type.whitespace || lexer.front.type == Type.newline))
+	{
 		start = lexer.offset;
 		lexer.popFront();
 	}
