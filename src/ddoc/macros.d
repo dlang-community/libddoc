@@ -40,7 +40,7 @@ unittest
 	// Ddoc has some hardwired macros, which will be automatically searched.
 	// List here: dlang.org/ddoc.html
 	auto l1 = Lexer(`A simple $(B Hello $(I world))`);
-	const r1 = expand(l1, null);
+	immutable r1 = expand(l1, null);
 	assert(r1 == `A simple <b>Hello <i>world</i></b>`, r1);
 
 	// Example on how to parse ddoc file / macros sections.
@@ -65,14 +65,14 @@ unittest
 	// expandMacro which expects the lexer to be placed on a macro, and
 	// will consume the input (unlike expand, which exhaust a copy).
 	auto l2 = Lexer(`$(GREETINGS $(IDENTITY John Doe))`);
-	const r2 = expand(l2, m2);
+	immutable r2 = expand(l2, m2);
 	assert(r2 == `Hello <b>John Doe</b>`, r2);
 
 	// Note that the expansions are not processed recursively.
 	// Hence, it's possible to have DDOC-formatted code inside DDOC.
 	auto l3 = Lexer(`This $(DOLLAR)(MACRO) do not expand recursively.`);
-	const r3 = expand(l3, null);
-	const e3 = `This $(MACRO) do not expand recursively.`;
+	immutable r3 = expand(l3, null);
+	immutable e3 = `This $(MACRO) do not expand recursively.`;
 	assert(e3 == r3, r3);
 }
 
@@ -209,16 +209,16 @@ string expand(Lexer input, string[string] macros)
 unittest
 {
 	auto lex = Lexer(`Dat logo: $(LOGO dlang, Beautiful dlang logo)`);
-	auto r = expand(lex, [`LOGO` : `<img src="images/$1_logo.png" alt="$2">`]);
-	auto exp = `Dat logo: <img src="images/dlang_logo.png" alt="Beautiful dlang logo">`;
+	immutable r = expand(lex, [`LOGO` : `<img src="images/$1_logo.png" alt="$2">`]);
+	immutable exp = `Dat logo: <img src="images/dlang_logo.png" alt="Beautiful dlang logo">`;
 	assert(r == exp, r);
 }
 
 unittest
 {
 	auto lex = Lexer(`$(DIV, Evil)`);
-	auto r = expand(lex, [`DIV` : `<div $1>$+</div>`]);
-	auto exp = `<div >Evil</div>`;
+	immutable r = expand(lex, [`DIV` : `<div $1>$+</div>`]);
+	immutable exp = `<div >Evil</div>`;
 	assert(r == exp, r);
 }
 
@@ -278,7 +278,7 @@ body
 ///
 unittest
 {
-	import ddoc.lexer;
+	import ddoc.lexer : Lexer;
 	import std.array : appender;
 
 	auto macros = [
@@ -287,59 +287,51 @@ unittest
 	];
 
 	auto l1 = Lexer(`$(HWORLD)`);
-	auto r1 = expandMacro(l1, macros);
+	immutable r1 = expandMacro(l1, macros);
 	assert(r1 == "Hello world!", r1);
 
 	auto l2 = Lexer(`$(B $(IDENTITY $(GREETINGS John Malkovich)))`);
-	auto r2 = expandMacro(l2, macros);
+	immutable r2 = expandMacro(l2, macros);
 	assert(r2 == "<b>Hello John Malkovich</b>", r2);
-
-	// Macros that have should take args but don't get them expand to empty string.
-	auto l3 = Lexer(`$(GREETINGS)`);
-	auto r3 = expandMacro(l3, macros);
-	//assert(r3 == "", r3);
 }
 
 /// A simple example, with recursive macros:
 unittest
 {
-	import ddoc.lexer;
+	import ddoc.lexer : Lexer;
 
 	auto lex = Lexer(`$(MYTEST Un,jour,mon,prince,viendra)`);
 	auto macros = [`MYTEST` : `$1 $(MYTEST $+)`];
 	// Note: There's also a version of expand that takes an OutputRange.
-	auto result = expand(lex, macros);
+	immutable result = expand(lex, macros);
 	assert(result == `Un jour mon prince viendra `, result);
 }
 
 unittest
 {
-	import std.array;
-
 	auto macros = [
 		"D" : "<b>$0</b>", "P" : "<p>$(D $0)</p>", "KP" : "<b>$1</b><i>$+</i>",
 		"LREF" : `<a href="#$1">$(D $1)</a>`
 	];
 	auto l = Lexer(`$(D something $(KP a, b) $(P else), abcd) $(LREF byLineAsync)`c);
-	auto expected = `<b>something <b>a</b><i>b</i> <p><b>else</b></p>, abcd</b> <a href="#byLineAsync"><b>byLineAsync</b></a>`;
+	immutable expected = `<b>something <b>a</b><i>b</i> <p><b>else</b></p>, abcd</b> <a href="#byLineAsync"><b>byLineAsync</b></a>`;
 	auto result = appender!string();
 	expand(l, macros, result);
 	assert(result.data == expected, result.data);
-	// writeln(result.data);
 }
 
 unittest
 {
 	auto l1 = Lexer("Do you have a $(RPAREN) problem with $(LPAREN) me?");
-	auto r1 = expand(l1, null);
+	immutable r1 = expand(l1, null);
 	assert(r1 == "Do you have a ) problem with ( me?", r1);
 
 	auto l2 = Lexer("And (with $(LPAREN) me) ?");
-	auto r2 = expand(l2, null);
+	immutable r2 = expand(l2, null);
 	assert(r2 == "And (with ( me) ?", r2);
 
 	auto l3 = Lexer("What about $(TEST me) ?");
-	auto r3 = expand(l3, ["TEST" : "($0"]);
+	immutable r3 = expand(l3, ["TEST" : "($0"]);
 	assert(r3 == "What about (me ?", r3);
 }
 
@@ -474,8 +466,7 @@ void expandMacroImpl(O)(Lexer input, in string[string] macros, O output)
 	if (!input.empty && (input.front.type == Type.whitespace || input.front.type == Type.newline))
 		input.popFront();
 	string[11] arguments;
-	auto c = collectMacroArguments(input, arguments);
-	//debug writeln("[EXPAND] There are ", c, " arguments");
+	collectMacroArguments(input, arguments);
 
 	// First pass
 	auto argOutput = appender!string();
@@ -563,8 +554,7 @@ size_t collectMacroArguments(Lexer input, ref string[11] args)
 			break;
 		case Type.lParen:
 			// Advance the lexer to the matching parenthesis.
-			auto err = input.text[input.offset .. $];
-			auto substr = matchParenthesis(input);
+			matchParenthesis(input);
 			break;
 			// TODO: Implement ", ' and <-- pairing.
 		default:
@@ -806,36 +796,36 @@ body
 unittest
 {
 	auto l1 = Lexer(`(Hello) World`);
-	auto r1 = matchParenthesis(l1);
+	immutable r1 = matchParenthesis(l1);
 	assert(r1 == "Hello", r1);
 	assert(!l1.empty);
 
 	auto l2 = Lexer(`()`);
-	auto r2 = matchParenthesis(l2);
+	immutable r2 = matchParenthesis(l2);
 	assert(r2 == "", r2);
 	assert(l2.empty);
 
 	auto l3 = Lexer(`(())`);
-	auto r3 = matchParenthesis(l3);
+	immutable r3 = matchParenthesis(l3);
 	assert(r3 == "()", r3);
 	assert(l3.empty);
 
 	auto l4 = Lexer(`W (He(l)lo)`);
 	l4.popFront();
 	l4.popFront();
-	auto r4 = matchParenthesis(l4);
+	immutable r4 = matchParenthesis(l4);
 	assert(r4 == "He(l)lo", r4);
 	assert(l4.empty);
 
 	auto l5 = Lexer(` @(Hello())   ()`);
 	l5.popFront();
 	l5.popFront();
-	auto r5 = matchParenthesis(l5);
+	immutable r5 = matchParenthesis(l5);
 	assert(r5 == "Hello()", r5);
 	assert(!l5.empty);
 
 	auto l6 = Lexer(`(Hello()   (`);
-	auto r6 = matchParenthesis(l6);
+	immutable r6 = matchParenthesis(l6);
 	assert(r6 == "Hello()   (", r6);
 	assert(l6.empty);
 }
