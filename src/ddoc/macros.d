@@ -508,7 +508,7 @@ private bool parseAsKeyValuePair(ref Lexer olexer, ref string key, ref string va
 		lexer.popFront();
 	else
 		return false;
-	while (lexer.front.type == Type.whitespace)
+	while (!lexer.empty && lexer.front.type == Type.whitespace)
 		lexer.popFront();
 	assert(lexer.offset > 0, "Something is wrong with the lexer");
 	// Offset points to the END of the token, not the beginning.

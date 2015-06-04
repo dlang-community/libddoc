@@ -43,6 +43,14 @@ Comment parseComment(string text, string[string] macros)
 	return Comment(sections);
 }
 
+unittest
+{
+	// Issue #21
+	Comment test = parseComment("\nParams:\n    dg = \n", null);
+	assert(test.sections.length == 3);
+	assert(test.sections[2].name == "Params");
+}
+
 struct Comment
 {
 	bool isDitto() const @property
