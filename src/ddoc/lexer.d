@@ -109,7 +109,7 @@ struct Lexer
 			return;
 		case '\r':
 			offset++;
-			goto case ;
+			goto case;
 		case '\n':
 			current.text = text[offset .. offset + 1];
 			current.type = Type.newline;

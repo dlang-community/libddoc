@@ -172,6 +172,29 @@ F= $0`;
 	assert(c.sections[5].mapping[0][1] == "$0", c.sections[5].mapping[0][1]);
 }
 
+unittest
+{
+	import std.stdio:writeln, writefln;
+
+	auto comment = `Unrolled Linked List.
+
+Nodes are (by default) sized to fit within a 64-byte cache line. The number
+of items stored per node can be read from the $(B nodeCapacity) field.
+See_also: $(LINK http://en.wikipedia.org/wiki/Unrolled_linked_list)
+Params:
+	T = the element type
+	supportGC = true to ensure that the GC scans the nodes of the unrolled
+		list, false if you are sure that no references to GC-managed memory
+		will be stored in this container.
+	cacheLineSize = Nodes will be sized to fit within this number of bytes.`;
+
+	auto parsed = parseComment(comment, null);
+	assert(parsed.sections[3].name == "Params");
+	assert(parsed.sections[3].mapping.length == 3);
+	assert(parsed.sections[3].mapping[1][0] == "supportGC");
+	assert(parsed.sections[3].mapping[1][1][0] == 't', "<<" ~ parsed.sections[3].mapping[1][1] ~ ">>");
+}
+
 private:
 bool doMapping(ref Section s) {
 	import ddoc.macros : KeyValuePair, parseKeyValuePair;

@@ -393,6 +393,7 @@ bool parseKeyValuePair(ref Lexer lexer, ref KeyValuePair[] pairs)
 
 	string prevKey, key;
 	string prevValue, value;
+	size_t start;
 	while (!lexer.empty)
 	{
 		// If parseAsKeyValuePair returns true, we stopped on a newline.
@@ -405,11 +406,10 @@ bool parseKeyValuePair(ref Lexer lexer, ref KeyValuePair[] pairs)
 			if (lexer.front.type == Type.header)
 				break;
 			assert(lexer.offset >= prevValue.length);
-			size_t start = tokOffset(lexer) - prevValue.length;
+			if (prevValue.length == 0)
+				start = tokOffset(lexer);
 			while (!lexer.empty && lexer.front.type != Type.newline)
-			{
 				lexer.popFront();
-			}
 			prevValue = lexer.text[start .. lexer.offset];
 		}
 		else
@@ -421,6 +421,7 @@ bool parseKeyValuePair(ref Lexer lexer, ref KeyValuePair[] pairs)
 			prevKey = key;
 			prevValue = value;
 			key = value = null;
+			start = tokOffset(lexer) - prevValue.length;
 		}
 		if (!lexer.empty)
 		{
@@ -491,13 +492,12 @@ unittest
 // Try to parse a line as a KeyValuePair, returns false if it fails
 private bool parseAsKeyValuePair(ref Lexer olexer, ref string key, ref string value)
 {
-	string _key;
 	auto lexer = olexer;
 	while (!lexer.empty && (lexer.front.type == Type.whitespace || lexer.front.type == Type.newline))
 		lexer.popFront();
 	if (!lexer.empty && lexer.front.type == Type.word)
 	{
-		_key = lexer.front.text;
+		key = lexer.front.text;
 		lexer.popFront();
 	}
 	else
@@ -512,17 +512,16 @@ private bool parseAsKeyValuePair(ref Lexer olexer, ref string key, ref string va
 		lexer.popFront();
 	assert(lexer.offset > 0, "Something is wrong with the lexer");
 	// Offset points to the END of the token, not the beginning.
-	size_t start = tokOffset(lexer);
+	immutable size_t start = tokOffset(lexer);
 	while (!lexer.empty && lexer.front.type != Type.newline)
 	{
 		assert(lexer.front.type != Type.header);
 		lexer.popFront();
 	}
-	olexer = lexer;
-	key = _key;
-	size_t end = lexer.offset - ((start != lexer.offset
-		&& lexer.offset != lexer.text.length) ? (1) : (0));
+	immutable size_t end = lexer.offset - ((start != lexer.offset
+		&& lexer.offset != lexer.text.length) ? 1 : 0);
 	value = lexer.text[start .. end];
+	olexer = lexer;
 	return true;
 }
 
