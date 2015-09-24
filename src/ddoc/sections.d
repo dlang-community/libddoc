@@ -39,7 +39,7 @@ struct Section
 	 */
 	bool isStandard() const @property
 	{
-		import std.algorithm;
+		import std.algorithm : canFind;
 
 		return STANDARD_SECTIONS.canFind(name);
 	}
@@ -95,102 +95,80 @@ Section parseMacrosOrParams(string name, ref Lexer lexer, ref string[string] mac
 Section[] splitSections(string text)
 {
 	import std.array : appender;
+	import std.string : strip;
 
-	/*
-	 * Note: The specs says those sections are unnamed. So some people could
-	 * name one of it's section 'Summary' or 'Description', and it would be
-	 * legal (but arguably wrong).
-	 */
+	// Note: The specs says those sections are unnamed. So some people could
+	// name one of it's section 'Summary' or 'Description', and it would be
+	// legal (but arguably wrong).
 	auto lex = Lexer(text);
 	auto app = appender!(Section[]);
-	bool hasSum, hasDesc;
+	bool hasSummary;
 	// Used to strip trailing newlines / whitespace.
-	size_t sliceStart, sliceEnd;
+	lex.stripWhitespace();
+	size_t sliceStart = lex.offset - lex.front.text.length;
+	size_t sliceEnd = sliceStart;
 	string name;
 	app ~= Section();
 	app ~= Section();
 
-	void appendUnnamedSection()
+
+	void finishSection()
 	{
-		if (hasSum && hasDesc)
+		if (!hasSummary)
 		{
-			assert(name !is null);
-			appendSection(name, lex.text[sliceStart .. sliceEnd], app);
-		}
-		else if (!hasSum)
-		{
-			hasSum = true;
+			hasSummary = true;
 			app.data[0].content = lex.text[sliceStart .. sliceEnd];
+			sliceStart = sliceEnd = lex.offset;
+		}
+		else if (name is null)
+		{
+			//immutable bool hadContent = app.data[1].content.length > 0;
+			app.data[1].content ~= lex.text[sliceStart .. sliceEnd];
 			sliceEnd = sliceStart = lex.offset;
 		}
-		else if (!hasDesc)
+		else
 		{
-			hasDesc = true;
-			app.data[1].content = lex.text[sliceStart .. sliceEnd];
-			sliceEnd = sliceStart = lex.offset;
+			appendSection(name, lex.text[sliceStart .. sliceEnd], app);
+			sliceStart = sliceEnd = lex.offset;
 		}
 	}
 
 	while (!lex.empty) switch (lex.front.type)
 	{
 	case Type.header:
-		appendUnnamedSection();
+		finishSection();
 		name = lex.front.text;
 		lex.popFront();
-		sliceEnd = sliceStart = lex.stripWhitespace();
+		lex.stripWhitespace();
 		break;
 	case Type.newline:
 		lex.popFront();
-		if (!hasSum && lex.front.type == Type.newline)
-		{
-			hasSum = true;
-			app.data[0].content = lex.text[sliceStart .. sliceEnd];
-			sliceEnd = sliceStart = lex.offset;
-			lex.popFront();
-		}
+		if (name is null && !lex.empty && lex.front.type == Type.newline)
+			finishSection();
 		break;
 	case Type.embedded:
-		// If examples are contiguous to each others
-		if (name != "Examples")
-		{
-			string prev = lex.text[sliceStart .. sliceEnd];
-			if (!hasSum)
-			{
-				app.data[0].content = prev;
-				hasSum = true;
-			}
-			else if (!hasDesc)
-			{
-				hasDesc = true;
-				app.data[1].content = prev;
-			}
-			else
-				appendSection(name, prev, app);
-			name = "Examples";
-			auto tmp = Lexer(lex.text[sliceEnd .. $]);
-			sliceStart = sliceEnd + tmp.stripWhitespace();
-			sliceEnd = lex.offset;
-		}
-		else
-			sliceEnd = lex.offset;
+		finishSection();
+		name = "Examples";
+		appendSection("Examples", "---\n" ~ lex.front.text ~ "\n---", app);
 		lex.popFront();
+		sliceStart = sliceEnd = lex.offset;
 		break;
 	default:
-		sliceEnd = lex.offset;
 		lex.popFront();
+		sliceEnd = lex.offset;
 		break;
 	}
-	if (name !is null)
-		appendSection(name, lex.text[sliceStart .. sliceEnd], app);
-	else
-		appendUnnamedSection();
+	finishSection();
+	foreach (ref section; app.data)
+		section.content = section.content.strip();
 	return app.data;
 }
 
 unittest
 {
-	import std.conv:text;
-	import std.stdio:stderr;
+	import std.conv : text;
+	import std.algorithm.iteration : map;
+	import std.algorithm.comparison : equal;
 
 	auto s = `description
 
@@ -211,9 +189,13 @@ Throws: a fit
 ---
 /// another example
 ---`;
-	assert(sections.length == 4, text(sections.length));
-	assert(sections[2].content == expectedExample);
-
+	assert(sections.length == 4, text(sections));
+	assert(sections.map!(a => a.name).equal(["", "", "Examples", "Throws"]),
+		text(sections.map!(a => a.name)));
+	assert(sections[0].content == "description", text(sections));
+	assert(sections[1].content == "Something else", text(sections));
+	assert(sections[2].content == expectedExample, sections[2].content);
+	assert(sections[3].content == "a fit", text(sections));
 }
 
 unittest
@@ -255,8 +237,8 @@ Version:
 
 `;
 	auto cnt = ["Short comment.\nStill comment.",
-		"Description.\nStill desc...\n\nStill", "Me & he", "None", "", "", "Nope,",
-		"------\nvoid foo() {}\n----", "", "", "See_Also", "", "", "", ""];
+		"Description.\nStill desc...\nStill", "Me & he", "None", "", "", "Nope,",
+		"---\nvoid foo() {}\n---", "", "", "See_Also", "", "", "", ""];
 	foreach (idx, sec; splitSections(s1))
 	{
 		if (idx < 2)
@@ -267,6 +249,20 @@ Version:
 		assert(sec.content == cnt[idx], text(sec.name, " (", idx, "): ",
 			sec.content));
 	}
+}
+
+// Issue 23
+unittest
+{
+	immutable comment = `summary
+
+---
+some code!!!
+---`;
+	const sections = splitSections(comment);
+	assert(sections[0].content == "summary");
+	assert(sections[1].content == "");
+	assert(sections[2].content == "---\nsome code!!!\n---");
 }
 
 private:
@@ -290,7 +286,10 @@ body
 	{
 		if (output.data[i].name == name)
 		{
-			output.data[i].content ~= "\n" ~ content;
+			if (output.data[i].content.length == 0)
+				output.data[i].content = content;
+			else if (content.length > 0)
+				output.data[i].content ~= "\n" ~ content;
 			return false;
 		}
 	}
