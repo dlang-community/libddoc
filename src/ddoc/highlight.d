@@ -23,7 +23,8 @@ module ddoc.highlight;
  * Returns:
  * A (possibly new) string containing the embedded code put in the proper macros.
  */
-string highlight(string str) {
+string highlight(string str)
+{
 	// Note: I don't think DMD is conformant w.r.t ddoc.
 	// The following file:
 	// Ddoc
@@ -48,15 +49,19 @@ string highlight(string str) {
 	// We need this because there's no way to tell how many dashes precede
 	// an embedded.
 	size_t end;
-	while (!lex.empty) {
-		if (lex.front.type == Type.embedded) {
+	while (!lex.empty)
+	{
+		if (lex.front.type == Type.embedded)
+		{
 			if (start != end)
 				output.put(lex.text[start .. end]);
 			output.put("$(D_CODE ");
 			highlightCode(lex.front.text, output);
 			output.put(")");
 			start = lex.offset;
-		} else if (lex.front.type == Type.inlined) {
+		}
+		else if (lex.front.type == Type.inlined)
+		{
 			if (start != end)
 				output.put(lex.text[start .. end]);
 			output.put("$(DDOC_BACKQUOTED ");
@@ -73,9 +78,10 @@ string highlight(string str) {
 }
 
 ///
-unittest {
+unittest
+{
 	import ddoc.lexer;
-	
+
 	auto s1 = `Here is some embedded D code I'd like to show you:
 $(MY_D_CODE
 ------
@@ -112,7 +118,8 @@ Hope you won't allocate`;
 }
 
 // Test multiple embedded code.
-unittest {
+unittest
+{
 	auto s1 = `----
 void main() {}
 ----
@@ -133,7 +140,8 @@ $(D_CODE $(D_KEYWORD unittest) {
 	assert(r1 == e1, r1);
 }
 
-unittest {
+unittest
+{
 	auto s = `
         ---------
         asm pure nothrow @nogc @trusted
@@ -152,36 +160,46 @@ unittest {
 )
 `;
 	auto r = highlight(s);
-	assert (r == e, r);
+	assert(r == e, r);
 }
 
 private:
-void highlightCode(O)(string code, ref O output) {
+void highlightCode(O)(string code, ref O output)
+{
 	import std.d.lexer;
 	import std.string : representation;
+
 	enum fName = "<embedded-code-in-documentation>";
 
 	auto cache = StringCache(StringCache.defaultBucketCount);
-	auto toks = code.representation.dup
-		.byToken(LexerConfig(fName, StringBehavior.source,
-				     WhitespaceBehavior.include), &cache);
-	while (!toks.empty) {
-		if (toks.front.type.isStringLiteral) {
+	auto toks = code.representation.dup.byToken(LexerConfig(fName,
+		StringBehavior.source, WhitespaceBehavior.include), &cache);
+	while (!toks.empty)
+	{
+		if (toks.front.type.isStringLiteral)
+		{
 			output.put("$(D_STRING ");
 			output.put(toks.front.text);
 			output.put(")");
-		} else if (toks.front == tok!"comment") {
+		}
+		else if (toks.front == tok!"comment")
+		{
 			output.put("$(D_COMMENT ");
 			output.put(toks.front.text);
 			output.put(")");
-		} else if (toks.front.type.isKeyword
-			   || toks.front.type.isBasicType) {
+		}
+		else if (toks.front.type.isKeyword || toks.front.type.isBasicType)
+		{
 			output.put("$(D_KEYWORD ");
 			output.put(toks.front.type.str);
 			output.put(")");
-		} else if (toks.front.text.length) {
+		}
+		else if (toks.front.text.length)
+		{
 			output.put(toks.front.text);
-		} else {
+		}
+		else
+		{
 			output.put(toks.front.type.str);
 		}
 		toks.popFront();
