@@ -166,7 +166,7 @@ unittest
 private:
 void highlightCode(O)(string code, ref O output)
 {
-	import std.d.lexer;
+	import dparse.lexer;
 	import std.string : representation;
 
 	enum fName = "<embedded-code-in-documentation>";
