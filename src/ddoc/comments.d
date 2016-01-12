@@ -8,6 +8,11 @@ import ddoc.sections;
 import ddoc.lexer;
 
 Comment parseComment(string text, string[string] macros)
+out(retVal)
+{
+	assert(retVal.sections.length >= 2);
+}
+body
 {
 	import std.algorithm : find;
 	import ddoc.macros : expand;
