@@ -39,7 +39,7 @@ body
 		if (!doMapping(p[0]))
 			throw new DdocParseException("Unable to parse Key/Value pairs", p[0].content);
 		foreach (ref kv; p[0].mapping)
-			kv[1] = expand(Lexer(kv[1]), sMacros);
+			kv[1] = expand(Lexer(highlight(kv[1])), sMacros);
 	}
 
 	foreach (ref Section sec; sections)
