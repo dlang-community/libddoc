@@ -19,6 +19,6 @@
 	}
 	],
 	"dependencies": {
-		"libdparse": "~master"
+		"libdparse": "~>0.7.0-alpha10"
 	}
 }
