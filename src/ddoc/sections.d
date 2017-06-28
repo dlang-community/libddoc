@@ -111,26 +111,32 @@ Section[] splitSections(string text)
 	app ~= Section();
 	app ~= Section();
 
-
 	void finishSection()
 	{
+		import std.algorithm.searching : canFind, endsWith, find;
+		import std.range : dropBack, enumerate, retro;
+
+		auto text = lex.text[sliceStart .. sliceEnd];
+		// remove the last line from the current section except for the last section
+		// (the last section doesn't have a following section)
+		if (text.canFind("\n") && sliceEnd != lex.text.length && !text.endsWith("---"))
+			text = text.dropBack(text.retro.enumerate.find!(e => e.value == '\n').front.index);
+
 		if (!hasSummary)
 		{
 			hasSummary = true;
-			app.data[0].content = lex.text[sliceStart .. sliceEnd];
-			sliceStart = sliceEnd = lex.offset;
+			app.data[0].content = text;
 		}
 		else if (name is null)
 		{
 			//immutable bool hadContent = app.data[1].content.length > 0;
-			app.data[1].content ~= lex.text[sliceStart .. sliceEnd];
-			sliceEnd = sliceStart = lex.offset;
+			app.data[1].content ~= text;
 		}
 		else
 		{
-			appendSection(name, lex.text[sliceStart .. sliceEnd], app);
-			sliceStart = sliceEnd = lex.offset;
+			appendSection(name, text, app);
 		}
+		sliceStart = sliceEnd = lex.offset;
 	}
 
 	while (!lex.empty) switch (lex.front.type)
@@ -263,6 +269,20 @@ some code!!!
 	assert(sections[0].content == "summary");
 	assert(sections[1].content == "");
 	assert(sections[2].content == "---\nsome code!!!\n---");
+}
+
+// Split section content correctly (without next line)
+unittest
+{
+	immutable comment = `Params:
+    pattern(s) = Regular expression(s) to match
+    flags = The _attributes (g, i, m and x accepted)
+
+    Throws: $(D RegexException) if there were any errors during compilation.`;
+
+    const sections = splitSections(comment);
+	assert(sections[2].content == "pattern(s) = Regular expression(s) to match\n" ~
+			"    flags = The _attributes (g, i, m and x accepted)");
 }
 
 private:
