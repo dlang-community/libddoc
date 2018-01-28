@@ -3,9 +3,9 @@
 	"targetName": "ddoc",
 	"description": "D implementation of the DDoc macro system",
 	"copyright": "Copyright © 2014-2015, Economic Modeling Specialists, Intl",
-	"authors": ["Brian Schott"],
+	"authors": ["Brian Schott", "DLang Community"],
 	"license": "BSL-1.0",
-	"homepage": "https://github.com/economicmodeling/libddoc",
+	"homepage": "https://github.com/dlang-community/libddoc",
 	"configurations": [
 	{
 		"name": "lib",
