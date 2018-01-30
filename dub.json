@@ -1,6 +1,7 @@
 {
 	"name": "libddoc",
 	"targetName": "ddoc",
+	"targetPath": "bin",
 	"description": "D implementation of the DDoc macro system",
 	"copyright": "Copyright © 2014-2015, Economic Modeling Specialists, Intl",
 	"authors": ["Brian Schott", "DLang Community"],
@@ -19,6 +20,6 @@
 	}
 	],
 	"dependencies": {
-		"libdparse": "~>0.7.0-alpha10"
+		"libdparse": "~>0.8.0-alpha.1"
 	}
 }

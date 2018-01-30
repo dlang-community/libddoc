@@ -4,3 +4,4 @@ __test__lib__
 dub.selections.json
 libddoc.a
 ./ddoc
+bin/

@@ -1,0 +1,8 @@
+sudo: false
+language: d
+d:
+  - dmd
+  - ldc
+script:
+    - dub build --config=lib --compiler=$DC
+    - dub build --config=exe --compiler=$DC
