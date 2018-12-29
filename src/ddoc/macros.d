@@ -190,6 +190,7 @@ void expand(O)(Lexer input, in string[string] macros, O output, bool removeUnkno
 						output.put("(");
 						foreach (val; mac)
 							output.put(val.text);
+						output.put(")");
 					}
 				}
 			}
@@ -227,6 +228,14 @@ unittest
 	auto lex = Lexer(`$(DIV, Evil)`);
 	immutable r = expand(lex, [`DIV` : `<div $1>$+</div>`]);
 	immutable exp = `<div >Evil</div>`;
+	assert(r == exp, r);
+}
+
+unittest
+{
+	auto lex = Lexer(`$(B this) $(UNKN $(B is)) unknown!`);
+	immutable r = expand(lex, [`B` : `<b>$0</b>`], false);
+	immutable exp = `<b>this</b> $(UNKN $(B is)) unknown!`;
 	assert(r == exp, r);
 }
 
