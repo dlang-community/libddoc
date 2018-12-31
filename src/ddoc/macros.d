@@ -169,7 +169,7 @@ shared static this()
  *		To undefine hardwired macros, just set them to an empty string: $(D macros["B"] = "";).
  * output = An object satisfying $(D std.range.isOutputRange), usually a $(D std.array.Appender).
  */
-void expand(O)(Lexer input, in string[string] macros, O output) if (isOutputRange!(O,
+void expand(O)(Lexer input, in string[string] macros, O output, bool removeUnknown = true) if (isOutputRange!(O,
 		string))
 {
 	// First, we need to turn every embedded code into a $(D_CODE)
@@ -183,7 +183,16 @@ void expand(O)(Lexer input, in string[string] macros, O output) if (isOutputRang
 			{
 				auto mac = Lexer(matchParenthesis(input), true);
 				if (!mac.empty)
-					expandMacroImpl(mac, macros, output);
+				{
+					if (!expandMacroImpl(mac, macros, output) && !removeUnknown)
+					{
+						output.put("$");
+						output.put("(");
+						foreach (val; mac)
+							output.put(val.text);
+						output.put(")");
+					}
+				}
 			}
 			else
 				output.put("$");
@@ -197,12 +206,12 @@ void expand(O)(Lexer input, in string[string] macros, O output) if (isOutputRang
 }
 
 /// Ditto
-string expand(Lexer input, string[string] macros)
+string expand(Lexer input, string[string] macros, bool removeUnknown = true)
 {
 	import std.array : appender;
 
 	auto app = appender!string();
-	expand(input, macros, app);
+	expand(input, macros, app, removeUnknown);
 	return app.data;
 }
 
@@ -219,6 +228,14 @@ unittest
 	auto lex = Lexer(`$(DIV, Evil)`);
 	immutable r = expand(lex, [`DIV` : `<div $1>$+</div>`]);
 	immutable exp = `<div >Evil</div>`;
+	assert(r == exp, r);
+}
+
+unittest
+{
+	auto lex = Lexer(`$(B this) $(UNKN $(B is)) unknown!`);
+	immutable r = expand(lex, [`B` : `<b>$0</b>`], false);
+	immutable exp = `<b>this</b> $(UNKN $(B is)) unknown!`;
 	assert(r == exp, r);
 }
 
@@ -439,20 +456,20 @@ bool parseKeyValuePair(ref Lexer lexer, ref KeyValuePair[] pairs)
 
 private:
 // upperArgs is a string[11] actually, or null.
-void expandMacroImpl(O)(Lexer input, in string[string] macros, O output)
+bool expandMacroImpl(O)(Lexer input, in string[string] macros, O output)
 {
 	import std.conv : text;
 
 	//debug writeln("Expanding: ", input.text);
 	// Check if the macro exist and get it's value.
 	if (input.front.type != Type.word)
-		return;
+		return false;
 	string macroName = input.front.text;
 	//debug writeln("[EXPAND] Macro name: ", input.front.text);
 	string macroValue = lookup(macroName, macros);
 	// No point loosing time if the macro is undefined.
 	if (macroValue is null)
-		return;
+		return false;
 	//debug writeln("[EXPAND] Macro value: ", macroValue);
 	input.popFront();
 
@@ -460,7 +477,7 @@ void expandMacroImpl(O)(Lexer input, in string[string] macros, O output)
 	if (input.empty && macroName == "BODY")
 	{
 		output.put(lookup("BODY", macros));
-		return;
+		return true;
 	}
 
 	// Collect the arguments
@@ -472,10 +489,11 @@ void expandMacroImpl(O)(Lexer input, in string[string] macros, O output)
 	// First pass
 	auto argOutput = appender!string();
 	if (!replaceArgs(macroValue, arguments, argOutput))
-		return;
+		return true;
 
 	// Second pass
 	replaceMacs(argOutput.data, macros, output);
+	return true;
 }
 
 unittest
