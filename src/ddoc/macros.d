@@ -167,6 +167,7 @@ shared static this()
  *		DDOC. Which means if an user provides a macro such as $(D macros["B"] = "<h1>$0</h1>";),
  *		it will be used, otherwise the default $(D macros["B"] = "<b>$0</b>";) will be used.
  *		To undefine hardwired macros, just set them to an empty string: $(D macros["B"] = "";).
+ * removeUnknown = Set to true to make unknown macros disappear from the output or false to make them output unprocessed.
  * output = An object satisfying $(D std.range.isOutputRange), usually a $(D std.array.Appender).
  */
 void expand(O)(Lexer input, in string[string] macros, O output, bool removeUnknown = true) if (isOutputRange!(O,
