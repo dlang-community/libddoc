@@ -43,7 +43,7 @@ string parseFile(string path, in string[string] context) {
 	return parseDdocBody(macros);
 }
 
-string parseDDString(string text, string[string] macros)
+string parseDDString(string text, string[string] macros, bool removeUnknown = true)
 {
 	import ddoc.highlight;
 	import std.string : strip;
@@ -64,7 +64,7 @@ string parseDDString(string text, string[string] macros)
 	//	macros["COPYRIGHT"] = copyright;
 	text = highlight(text);
 	auto lexer = Lexer(text, true);
-	return expand(lexer, macros);
+	return expand(lexer, macros, removeUnknown);
 }
 
 ///
@@ -72,7 +72,7 @@ unittest {
 	import std.stdio, std.string;
 
 	auto text = `Ddoc
-	This file is a standalone Ddoc file. It can contain any kind of
+	This file is a $(unknown standalone) Ddoc file. It can contain any kind of
 	$(MAC macros), defined in the $(MAC 'Macros:' section).
 
 Macros:
@@ -80,13 +80,17 @@ Macros:
 	_=
 `;
 
-	auto expected = `This file is a standalone Ddoc file. It can contain any kind of
+	auto expected1 = `This file is a  Ddoc file. It can contain any kind of
+	macros, defined in the 'Macros:' section.`;
+	auto expected2 = `This file is a $(unknown standalone) Ddoc file. It can contain any kind of
 	macros, defined in the 'Macros:' section.`;
 
 	auto lex = Lexer(text, true);
 	// Whitespace and newline before / after not taken into account.
 	auto res = parseDDString(text, null).strip;
-	assert(res == expected, res);
+	assert(res == expected1, res);
+	res = parseDDString(text, null, false).strip;
+	assert(res == expected2, res);
 }
 
 // Warning: Does not support embedded code / inlining.

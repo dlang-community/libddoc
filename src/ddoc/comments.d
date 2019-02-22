@@ -7,7 +7,7 @@ module ddoc.comments;
 import ddoc.sections;
 import ddoc.lexer;
 
-Comment parseComment(string text, string[string] macros)
+Comment parseComment(string text, string[string] macros, bool removeUnknown = true)
 out(retVal)
 {
 	assert(retVal.sections.length >= 2);
@@ -39,13 +39,13 @@ body
 		if (!doMapping(p[0]))
 			throw new DdocParseException("Unable to parse Key/Value pairs", p[0].content);
 		foreach (ref kv; p[0].mapping)
-			kv[1] = expand(Lexer(highlight(kv[1])), sMacros);
+			kv[1] = expand(Lexer(highlight(kv[1])), sMacros, removeUnknown);
 	}
 
 	foreach (ref Section sec; sections)
 	{
 		if (sec.name != "Macros" && sec.name != "Escapes" && sec.name != "Params")
-			sec.content = expand(Lexer(highlight(sec.content)), sMacros);
+			sec.content = expand(Lexer(highlight(sec.content)), sMacros, removeUnknown);
 	}
 	return Comment(sections);
 }
@@ -102,6 +102,30 @@ Returns:
 	assert(c.sections[2].mapping[0][0] == "a");
 	assert(c.sections[2].mapping[0][1] == `<a href="param">`, c.sections[2].mapping[0][1]);
 	assert(c.sections[3].name == "Returns");
+}
+
+unittest
+{
+	auto macros = ["A" : "<a href=\"$0\">"];
+	auto comment = `Best $(Unknown comment) ever`;
+
+	Comment c = parseComment(comment, macros, true);
+
+	assert(c.sections.length >= 1);
+	assert(c.sections[0].name is null);
+	assert(c.sections[0].content == "Best  ever", c.sections[0].content);
+}
+
+unittest
+{
+	auto macros = ["A" : "<a href=\"$0\">"];
+	auto comment = `Best $(Unknown comment) ever`;
+
+	Comment c = parseComment(comment, macros, false);
+
+	assert(c.sections.length >= 1);
+	assert(c.sections[0].name is null);
+	assert(c.sections[0].content == "Best $(Unknown comment) ever", c.sections[0].content);
 }
 
 unittest
