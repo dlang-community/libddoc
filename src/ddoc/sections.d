@@ -292,7 +292,6 @@ unittest
 {
 	immutable comment = "`code` something";
 	const sections = splitSections(comment);
-	import std.stdio; writeln(sections);
 	assert(sections[0].content == "`code` something");
 }
 
