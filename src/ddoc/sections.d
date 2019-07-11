@@ -106,6 +106,8 @@ Section[] splitSections(string text)
 	// Used to strip trailing newlines / whitespace.
 	lex.stripWhitespace();
 	size_t sliceStart = lex.offset - lex.front.text.length;
+	if (lex.front.type == Type.inlined)
+		sliceStart -= 2; // opening and closing '`' characters
 	size_t sliceEnd = sliceStart;
 	string name;
 	app ~= Section();
@@ -280,9 +282,17 @@ unittest
 
     Throws: $(D RegexException) if there were any errors during compilation.`;
 
-    const sections = splitSections(comment);
+	const sections = splitSections(comment);
 	assert(sections[2].content == "pattern(s) = Regular expression(s) to match\n" ~
 			"    flags = The _attributes (g, i, m and x accepted)");
+}
+
+// Handle inlined code properly
+unittest
+{
+	immutable comment = "`code` something";
+	const sections = splitSections(comment);
+	assert(sections[0].content == "`code` something");
 }
 
 private:
