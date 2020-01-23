@@ -12,7 +12,7 @@ out(retVal)
 {
 	assert(retVal.sections.length >= 2);
 }
-body
+do
 {
 	import std.algorithm : find;
 	import ddoc.macros : expand;

@@ -310,7 +310,7 @@ in
 {
 	assert(name!is null, "You should not call appendSection with a null name");
 }
-body
+do
 {
 	for (size_t i = 2; i < output.data.length; ++i)
 	{
