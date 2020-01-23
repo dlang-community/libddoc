@@ -264,7 +264,7 @@ void expandMacro(O)(ref Lexer input, in string[string] macros, O output) if (
 	assert(input.front.type == Type.dollar || input.front.type == Type.lParen,
 		text("$ or ( expected, not ", input.front.type));
 }
-body
+do
 {
 	import std.conv : text;
 
@@ -284,7 +284,7 @@ in
 	assert(input.front.type == Type.dollar || input.front.type == Type.lParen,
 		text("$ or ( expected, not ", input.front.type));
 }
-body
+do
 {
 	import std.array : appender;
 
@@ -790,7 +790,7 @@ in
 	assert(lexer.front.type == Type.lParen, text(lexer.front));
 	assert(lexer.offset);
 }
-body
+do
 {
 	size_t count;
 	size_t start = lexer.offset;
