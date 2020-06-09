@@ -7,6 +7,6 @@ env:
   - VERSION=min
   - VERSION=max
 script:
-  - rdmd ./test_with_libdparse.d -- dub test --compiler=$DC
-  - rdmd ./test_with_libdparse.d -- dub build --config=lib --compiler=$DC
-  - rdmd ./test_with_libdparse.d -- dub build --config=exe --compiler=$DC
+  - rdmd ./d-test-utils/test_with_package.d libdparse -- dub test --compiler=$DC
+  - rdmd ./d-test-utils/test_with_package.d libdparse -- dub build --config=lib --compiler=$DC
+  - rdmd ./d-test-utils/test_with_package.d libdparse -- dub build --config=exe --compiler=$DC
