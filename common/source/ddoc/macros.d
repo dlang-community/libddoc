@@ -889,4 +889,4 @@ package size_t stripWhitespace(ref Lexer lexer)
 	return start;
 }
 
-enum callHighlightMsg = "You should call ddoc.hightlight.hightlight(string) first.";
+enum callHighlightMsg = "You should call ddoc.hightlight.hightlight(string) or ddoc.unhighlight.unhighlight(string) first.";
