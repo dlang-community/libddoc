@@ -7,6 +7,8 @@ module ddoc.comments;
 import ddoc.sections;
 import ddoc.lexer;
 
+public import ddoc.types;
+
 Comment parseComment(string text, string[string] macros, bool removeUnknown = true)
 out(retVal)
 {
@@ -14,40 +16,9 @@ out(retVal)
 }
 do
 {
-	import std.algorithm : find;
-	import ddoc.macros : expand;
 	import ddoc.highlight : highlight;
 
-	auto sections = splitSections(text);
-	string[string] sMacros = macros;
-	auto m = sections.find!(p => p.name == "Macros");
-	const e = sections.find!(p => p.name == "Escapes");
-	auto p = sections.find!(p => p.name == "Params");
-	if (m.length)
-	{
-		if (!doMapping(m[0]))
-			throw new DdocParseException("Unable to parse Key/Value pairs", m[0].content);
-		foreach (kv; m[0].mapping)
-			sMacros[kv[0]] = kv[1];
-	}
-	if (e.length)
-	{
-		assert(0, "Escapes not handled yet");
-	}
-	if (p.length)
-	{
-		if (!doMapping(p[0]))
-			throw new DdocParseException("Unable to parse Key/Value pairs", p[0].content);
-		foreach (ref kv; p[0].mapping)
-			kv[1] = expand(Lexer(highlight(kv[1])), sMacros, removeUnknown);
-	}
-
-	foreach (ref Section sec; sections)
-	{
-		if (sec.name != "Macros" && sec.name != "Escapes" && sec.name != "Params")
-			sec.content = expand(Lexer(highlight(sec.content)), sMacros, removeUnknown);
-	}
-	return Comment(sections);
+	return Comment.parse(text, macros, removeUnknown, &highlight);
 }
 
 unittest
@@ -56,18 +27,6 @@ unittest
 	Comment test = parseComment("\nParams:\n    dg = \n", null);
 	assert(test.sections.length == 3);
 	assert(test.sections[2].name == "Params");
-}
-
-struct Comment
-{
-	bool isDitto() const @property
-	{
-		import std.string : strip, toLower;
-
-		return sections.length == 2 && sections[0].content.strip().toLower() == "ditto";
-	}
-
-	Section[] sections;
 }
 
 unittest
@@ -228,20 +187,4 @@ Params:
 	assert(parsed.sections[3].mapping.length == 3);
 	assert(parsed.sections[3].mapping[1][0] == "supportGC");
 	assert(parsed.sections[3].mapping[1][1][0] == 't', "<<" ~ parsed.sections[3].mapping[1][1] ~ ">>");
-}
-
-private:
-bool doMapping(ref Section s)
-{
-	import ddoc.macros : KeyValuePair, parseKeyValuePair;
-
-	auto lex = Lexer(s.content);
-	KeyValuePair[] pairs;
-	if (parseKeyValuePair(lex, pairs))
-	{
-		foreach (idx, kv; pairs)
-			s.mapping ~= kv;
-		return true;
-	}
-	return false;
 }

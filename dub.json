@@ -8,18 +8,20 @@
 	"license": "BSL-1.0",
 	"homepage": "https://github.com/dlang-community/libddoc",
 	"configurations": [
-	{
-		"name": "lib",
-		"targetType": "library",
-		"versions": [ "LIBDDOC_CONFIG_LIB" ]
-	},
-	{
-		"name": "exe",
-		"targetType": "executable",
-		"versions": [ "LIBDDOC_CONFIG_EXE" ]
-	}
+		{
+			"name": "lib",
+			"targetType": "library",
+			"versions": [ "LIBDDOC_CONFIG_LIB" ]
+		},
+		{
+			"name": "exe",
+			"targetType": "executable",
+			"versions": [ "LIBDDOC_CONFIG_EXE" ]
+		}
 	],
 	"dependencies": {
-		"libdparse": ">=0.13.0 <0.18.0"
-	}
+		"libdparse": ">=0.13.0 <1.0.0",
+		":common": "*"
+	},
+	"subPackages": ["common"]
 }
